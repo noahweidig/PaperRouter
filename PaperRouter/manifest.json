@@ -1,7 +1,7 @@
 {
     "manifest_version": 2,
     "name": "PaperRouter",
-    "version": "0.2.1",
+    "version": "0.2.2",
     "description": "Suggests Zotero collections for your papers via LLM or embedding similarity.",
     "homepage_url": "https://github.com/KESHEN-ZHOU/PaperRouter",
     "applications": {
@@ -9,7 +9,7 @@
             "id": "paperrouter@keshen-zhou.github.io",
             "update_url": "https://raw.githubusercontent.com/KESHEN-ZHOU/PaperRouter/main/updates.json",
             "strict_min_version": "7.0",
-            "strict_max_version": "9.*"
+            "strict_max_version": "10.0.*"
         }
     },
     "icons": {

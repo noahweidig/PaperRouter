@@ -41,7 +41,7 @@
 
 在 Zotero 里右键一篇论文，PaperRouter 会列出按语义匹配度排序的收藏夹，每条带置信度，挑合适的勾上就行。被你拒掉的收藏夹会被记住，下次同类条目里那个收藏夹会被降权。
 
-支持 Zotero 7、8、9。
+支持 Zotero 7、8、9、10.0.x。
 
 ## 功能
 
@@ -63,7 +63,7 @@
 
 ## 环境要求
 
-- [Zotero](https://www.zotero.org/) 7.x – 9.x
+- [Zotero](https://www.zotero.org/) 7.x – 10.0.x
 - 至少一个 provider 的 API key：
   - LLM：OpenAI、Anthropic (Claude)、Gemini、OpenRouter、Cohere，或任何 OpenAI 兼容端点。
   - Embedding：OpenAI、Cohere，或任何 OpenAI 兼容端点。
@@ -72,7 +72,7 @@
 
 ## 安装
 
-1. 从 [Releases](../../releases) 下载最新 `paperrouter-*.xpi`，或直接用本仓库的 `dist/paperrouter-0.2.1.xpi`。
+1. 从 [Releases](../../releases) 下载最新 `paperrouter-*.xpi`，或直接用本仓库的 `dist/paperrouter-0.2.2.xpi`。
 2. Zotero → 工具 → 插件 → ⚙️ → 从文件安装插件…
 3. 选 `.xpi`，重启 Zotero。
 

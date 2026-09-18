@@ -41,7 +41,7 @@ My Zotero library grew faster than I could file. Each new PDF meant a slow scrol
 
 Right-click an item in Zotero, get a ranked list of collections with a confidence score next to each, pick the ones that fit. PaperRouter also remembers what you reject: blacklisted collections get penalised in future suggestions.
 
-Works on Zotero 7, 8, and 9.
+Works on Zotero 7, 8, 9, and 10.0.x.
 
 ## Features
 
@@ -63,7 +63,7 @@ Two algorithms; you can use either or both:
 
 ## Requirements
 
-- [Zotero](https://www.zotero.org/) 7.x – 9.x
+- [Zotero](https://www.zotero.org/) 7.x – 10.0.x
 - An API key for at least one provider:
   - LLM: OpenAI, Anthropic (Claude), Gemini, OpenRouter, Cohere, or any OpenAI-compatible endpoint.
   - Embedding: OpenAI, Cohere, or any OpenAI-compatible endpoint.
@@ -72,7 +72,7 @@ Both sides are independent. You can configure embedding only, LLM only, or both.
 
 ## Install
 
-1. Grab `paperrouter-*.xpi` from [Releases](../../releases), or use `dist/paperrouter-0.2.1.xpi` from this repo.
+1. Grab `paperrouter-*.xpi` from [Releases](../../releases), or use `dist/paperrouter-0.2.2.xpi` from this repo.
 2. Zotero → Tools → Add-ons → ⚙️ → Install Add-on From File…
 3. Pick the `.xpi`, restart Zotero.
 

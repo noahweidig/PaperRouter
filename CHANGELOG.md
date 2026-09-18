@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.2 — 2026-09-18
+
+### Changed
+
+- Extend the declared Zotero compatibility range to 10.0.x in the plugin manifest and the new 0.2.2 update entry, keeping Zotero 7 as the minimum version.
+- No routing or UI behavior changes. The maintainer reported successful manual testing on Zotero 10.
+
 ## 0.2.1 — 2026-05-26
 
 Bug fix.
