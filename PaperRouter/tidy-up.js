@@ -2609,9 +2609,9 @@ Output strictly in the above format with no additional content.`;
 		const scores = PaperRouterLocalRank.score(idx, {
 			title: itemName,
 			abstract: itemAbstract || '',
-			tags: (extra && extra.tags) || [],
-			venue: (extra && extra.venue) || ''
-		}, extra && extra.excludeItemId != null ? extra.excludeItemId : null);
+			tags: extra?.tags || [],
+			venue: extra?.venue || ''
+		}, extra?.excludeItemId ?? null);
 		const walk = (nodes) => {
 			for (const node of nodes) {
 				if (blacklist.has(node.id)) {
@@ -3397,10 +3397,10 @@ Output strictly in the above format with no additional content.`;
 		
 		// Call sort function, get similarity-sorted collections tree
 		let collectionData = [];
+		const itemExtra = { tags: [], venue: '', excludeItemId: itemId };
 		try {
 			const tBeforeSort = Date.now();
 			this.log('showSimpleDialog: Calling SortCollectionsByItemName...');
-			var itemExtra = { tags: [], venue: '', excludeItemId: itemId };
 			try {
 				if (selectedItem) {
 					itemExtra.tags = (selectedItem.getTags() || []).map(t => t.tag);

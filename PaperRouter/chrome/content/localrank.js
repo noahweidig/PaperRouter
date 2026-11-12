@@ -22,13 +22,13 @@ var PaperRouterLocalRank = (function () {
 
 	function stem(w) {
 		if (w.length < 4) return w;
-		if (/ies$/.test(w)) w = w.slice(0, -3) + 'y';
-		else if (/sses$/.test(w)) w = w.slice(0, -2);
+		if (w.endsWith('ies')) w = w.slice(0, -3) + 'y';
+		else if (w.endsWith('sses')) w = w.slice(0, -2);
 		else if (/[^su]s$/.test(w)) w = w.slice(0, -1);
-		if (w.length > 5 && /ing$/.test(w)) w = w.slice(0, -3);
-		else if (w.length > 5 && /ed$/.test(w)) w = w.slice(0, -2);
-		if (w.length > 3 && /(.)\1$/.test(w) && !/(ll|ss)$/.test(w)) w = w.slice(0, -1);
-		if (w.length > 4 && /e$/.test(w)) w = w.slice(0, -1);
+		if (w.length > 5 && w.endsWith('ing')) w = w.slice(0, -3);
+		else if (w.length > 5 && w.endsWith('ed')) w = w.slice(0, -2);
+		if (w.length > 3 && /(.)\1$/.test(w) && !w.endsWith('ll') && !w.endsWith('ss')) w = w.slice(0, -1);
+		if (w.length > 4 && w.endsWith('e')) w = w.slice(0, -1);
 		return w;
 	}
 
@@ -64,7 +64,6 @@ var PaperRouterLocalRank = (function () {
 	}
 
 	var W_ITEM = { title: 3, tags: 3, venue: 1, abstract: 1 };
-	var W_NAME = 4;
 
 	function itemFields(it) {
 		return [
@@ -170,8 +169,8 @@ var PaperRouterLocalRank = (function () {
 			q.forEach(function (qv, t) {
 				var posts = idx.postings.get(t);
 				if (!posts) return;
-				for (var i = 0; i < posts.length; i++) {
-					sims.set(posts[i][0], (sims.get(posts[i][0]) || 0) + qv * posts[i][1]);
+				for (var post of posts) {
+					sims.set(post[0], (sims.get(post[0]) || 0) + qv * post[1]);
 				}
 			});
 		}
@@ -197,7 +196,7 @@ var PaperRouterLocalRank = (function () {
 			var P = 0;
 			if (qnorm > 0 && c.count > 0) {
 				var sum = c.sum, norm = c.norm;
-				if (excl && excl.cids.indexOf(cid) !== -1) {
+				if (excl && excl.cids.includes(cid)) {
 					sum = new Map(c.sum);
 					excl.tf.forEach(function (w, t) { sum.set(t, (sum.get(t) || 0) - w); });
 					norm = profileNorm(sum, idx.idf);
