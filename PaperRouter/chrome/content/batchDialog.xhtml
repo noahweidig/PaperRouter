@@ -19,6 +19,7 @@
     windowtype="tidy-up:batch-dialog"
     onload="onLoad();">
     <script type="application/javascript" src="chrome://tidy-up-trae/content/l10n.js"/>
+    <script type="application/javascript" src="chrome://tidy-up-trae/content/icons.js"/>
     <script type="application/javascript" src="chrome://tidy-up-trae/content/batchDialog.js"/>
 
     <html:div id="app">
@@ -29,6 +30,7 @@
         <html:div id="controls">
             <html:button id="btn-top" class="pr" type="button"></html:button>
             <html:button id="btn-clear" class="pr" type="button"></html:button>
+            <html:label id="movebox" class="movebox" hidden="hidden"><html:input id="move-inbox" type="checkbox" checked="checked" /><html:span id="move-label"></html:span></html:label>
             <html:span class="spacer"></html:span>
             <html:span id="hint"></html:span>
         </html:div>

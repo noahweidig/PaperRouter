@@ -137,7 +137,7 @@ describe('batch filing', () => {
     const res = await r.addItemsToCollections([{ itemId: 7, collections: [{ id: '1' }, { id: '2' }, { id: '3' }] }], new Map([[7, item]]));
     expect(tx).toBe(1);
     expect(added).toEqual([[2, 7], [3, 7]]);
-    expect(res).toEqual({ added: 2, collections: 2 });
+    expect(res).toEqual({ added: 2, removed: 0, collections: 2 });
   });
 });
 
@@ -177,5 +177,49 @@ describe('excluded collections', () => {
     const r = loadRouter(data);
     r.__zotero.Prefs.get = () => '';
     expect(r.getExcludedNames()).toEqual([]);
+  });
+});
+
+describe('inbox move and undo', () => {
+  function setup() {
+    const r = loadRouter(() => []);
+    const calls = [];
+    r.__zotero.DB.executeTransaction = async (fn) => { await fn(); };
+    r.__zotero.Collections = { getAsync: async (id) => ({ id, addItem: async (iid) => calls.push(['add', id, iid]), removeItem: async (iid) => calls.push(['remove', id, iid]) }) };
+    const prefs = {};
+    r.__zotero.Prefs = { get: (k) => prefs[k] ?? null, set: (k, v) => { prefs[k] = v; } };
+    r.showNotification = () => {};
+    return { r, calls };
+  }
+
+  test('removes inbox membership only for papers that got filed', async () => {
+    const { r, calls } = setup();
+    const a = { id: 1, getCollections: () => [9] };
+    const b = { id: 2, getCollections: () => [9] };
+    const res = await r.addItemsToCollections([
+      { itemId: 1, collections: [{ id: '5' }], removeFrom: [9] },
+      { itemId: 2, collections: [], removeFrom: [9] }
+    ], new Map([[1, a], [2, b]]));
+    expect(calls).toEqual([['add', 5, 1], ['remove', 9, 1]]);
+    expect(res).toEqual({ added: 1, removed: 1, collections: 1 });
+  });
+
+  test('undo reverses adds and removals, then clears itself', async () => {
+    const { r, calls } = setup();
+    const a = { id: 1, getCollections: () => [9] };
+    await r.addItemsToCollections([{ itemId: 1, collections: [{ id: '5' }], removeFrom: [9] }], new Map([[1, a]]));
+    calls.length = 0;
+    const res = await r.undoLastFiling();
+    expect(res.undone).toBe(2);
+    expect(calls).toEqual([['remove', 5, 1], ['add', 9, 1]]);
+    expect(r.getLastFiling()).toBeNull();
+    expect((await r.undoLastFiling()).undone).toBe(0);
+  });
+
+  test('last filing survives a restart via the pref', async () => {
+    const { r } = setup();
+    await r.addItemsToCollections([{ itemId: 1, collections: [{ id: '5' }] }], new Map([[1, { id: 1, getCollections: () => [] }]]));
+    r.lastFiling = null;   // simulate fresh session
+    expect(r.getLastFiling().added).toEqual([[1, 5]]);
   });
 });

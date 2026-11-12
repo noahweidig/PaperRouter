@@ -33,19 +33,22 @@ var PaperRouterLocalRank = (function () {
 	}
 
 	// Words (stemmed, stopwords dropped) + character bigrams for Chinese runs.
-	function tokenize(text) {
+	// surface (optional Map): stem -> first original word, for readable explanations.
+	function tokenize(text, surface) {
 		var out = [];
 		if (!text) return out;
 		var runs = String(text).toLowerCase().match(RUN_RE) || [];
 		runs.forEach(function (run) {
 			if (HAN_RE.test(run)) flushHan(run, out);
-			else pushWord(run, out);
+			else pushWord(run, out, surface);
 		});
 		return out;
 	}
-	function pushWord(tok, out) {
+	function pushWord(tok, out, surface) {
 		if (tok.length < 2 || STOP.has(tok) || /^\d+$/.test(tok)) return;
-		out.push(stem(tok));
+		var s = stem(tok);
+		out.push(s);
+		if (surface && !surface.has(s)) surface.set(s, tok);
 	}
 	function flushHan(run, out) {
 		if (!run) return;
@@ -54,10 +57,10 @@ var PaperRouterLocalRank = (function () {
 	}
 
 	// Weighted, sublinear term frequencies for a set of fields: [{text, weight}]
-	function termWeights(fields) {
+	function termWeights(fields, surface) {
 		var tf = new Map();
 		fields.forEach(function (f) {
-			tokenize(f.text).forEach(function (t) { tf.set(t, (tf.get(t) || 0) + f.weight); });
+			tokenize(f.text, surface).forEach(function (t) { tf.set(t, (tf.get(t) || 0) + f.weight); });
 		});
 		tf.forEach(function (v, k) { tf.set(k, 1 + Math.log(v)); });
 		return tf;
@@ -114,7 +117,7 @@ var PaperRouterLocalRank = (function () {
 				if (!p) { p = []; idx.postings.set(t, p); }
 				p.push([i, v]);
 			});
-			var rec = { id: r.it.id, vec: vec, norm: Math.sqrt(n2) || 1, cids: r.it.collectionIds || [], tf: r.tf };
+			var rec = { id: r.it.id, title: r.it.title || '', vec: vec, norm: Math.sqrt(n2) || 1, cids: r.it.collectionIds || [], tf: r.tf };
 			idx.items.push(rec);
 			idx.itemById.set(r.it.id, rec);
 			rec.cids.forEach(function (cid) {
@@ -158,7 +161,8 @@ var PaperRouterLocalRank = (function () {
 	 */
 	function score(idx, item, excludeItemId) {
 		var out = new Map();
-		var qtf = termWeights(itemFields(item));
+		var surface = new Map();
+		var qtf = termWeights(itemFields(item), surface);
 		var q = new Map(), qn2 = 0;
 		qtf.forEach(function (w, t) {
 			var idf = idx.idf.get(t);
@@ -191,15 +195,23 @@ var PaperRouterLocalRank = (function () {
 		var simTotal = neigh.reduce(function (s, n) { return s + n.sim; }, 0);
 		var topSim = neigh.length ? neigh[0].sim : 0;
 		var knn = new Map();
+		var similar = new Map();   // cid -> up to 2 most similar filed titles
 		neigh.forEach(function (n) {
-			n.rec.cids.forEach(function (cid) { knn.set(cid, (knn.get(cid) || 0) + n.sim); });
+			n.rec.cids.forEach(function (cid) {
+				knn.set(cid, (knn.get(cid) || 0) + n.sim);
+				var l = similar.get(cid);
+				if (!l) { l = []; similar.set(cid, l); }
+				if (l.length < 2 && n.rec.title) l.push(n.rec.title);
+			});
 		});
+		out.why = new Map();
 
 		var excl = excludeItemId != null ? idx.itemById.get(excludeItemId) : null;
 
 		idx.colls.forEach(function (c, cid) {
 			// profile cosine (subtract the excluded item from its own collections)
 			var P = 0;
+			var contrib = [];
 			if (qnorm > 0 && c.count > 0) {
 				var sum = c.sum, norm = c.norm;
 				if (excl && excl.cids.includes(cid)) {
@@ -211,7 +223,11 @@ var PaperRouterLocalRank = (function () {
 					var dot = 0;
 					q.forEach(function (qv, t) {
 						var w = sum.get(t);
-						if (w > 0) dot += qv * w * idx.idf.get(t);
+						if (w > 0) {
+							var part = qv * w * idx.idf.get(t);
+							dot += part;
+							contrib.push([t, part]);
+						}
 					});
 					P = dot / (qnorm * norm);
 				}
@@ -229,6 +245,13 @@ var PaperRouterLocalRank = (function () {
 			// neighbour vote just by being big, so damp it by how oversized it is.
 			if (c.count > 0) s /= 1 + 0.5 * Math.log(1 + c.count / idx.medianCount);
 			out.set(cid, Math.max(0, Math.min(1, s)));
+			if (s > 0) {
+				contrib.sort(function (a, b) { return b[1] - a[1]; });
+				out.why.set(cid, {
+					terms: contrib.slice(0, 3).map(function (e) { return surface.get(e[0]) || e[0]; }),
+					similar: similar.get(cid) || []
+				});
+			}
 		});
 		return out;
 	}

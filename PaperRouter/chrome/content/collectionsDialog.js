@@ -61,7 +61,7 @@ function ingest(collections) {
 			var id = parseInt(n.id, 10);
 			var rec = {
 				id: id, key: n.key, name: n.name || 'Unnamed', conf: n.confidence || 0,
-				type: n.collectionType || null, parent: parent, path: path, children: []
+				type: n.collectionType || null, why: n.why || null, parent: parent, path: path, children: []
 			};
 			S.nodes.set(id, rec);
 			rec.children = walk(n.children || [], rec, path.concat(rec.name));
@@ -128,6 +128,15 @@ function autoSelect(threshold) {
 
 // ---------- rendering ----------
 
+function tierOf(c) { return c >= 0.7 ? 'high' : (c >= 0.4 ? 'medium' : 'low'); }
+function whyText(w) {
+	if (!w) return '';
+	var out = '';
+	if (w.terms && w.terms.length) out += '\n' + _s('why-terms', { terms: w.terms.join(', ') });
+	if (w.similar && w.similar.length) out += '\n' + _s('why-similar', { titles: w.similar.join(' | ') });
+	return out;
+}
+
 function pct(conf) { return Math.max(0, Math.min(100, Math.round(conf * 100))); }
 
 function makeRow(rec, withPath) {
@@ -150,8 +159,9 @@ function makeRow(rec, withPath) {
 	fill.style.width = pct(rec.conf) + '%';
 	bar.appendChild(fill);
 	conf.appendChild(bar);
-	conf.appendChild(h('b', null, String(pct(rec.conf))));
-	label.title = rec.path.concat(rec.name).join(' › ') + '  ·  ' + _s('dialog-conf-label') + ' ' + rec.conf.toFixed(4);
+	var tier = tierOf(rec.conf);
+	conf.appendChild(h('span', 'tier ' + (tier === 'low' ? 'low' : ''), rec.conf > 0 ? _s('tier-' + tier) : ''));
+	label.title = rec.path.concat(rec.name).join(' › ') + '  ·  ' + _s('dialog-conf-label') + ' ' + rec.conf.toFixed(2) + whyText(rec.why);
 	label.appendChild(conf);
 	if (!S.rows.has(rec.id)) S.rows.set(rec.id, []);
 	S.rows.get(rec.id).push({ cb: cb, label: label });
@@ -367,13 +377,13 @@ async function onLoad() {
 	document.documentElement.setAttribute('title', _s('dialog-title'));
 	$('item-label').textContent = _s('dialog-selected-item').replace(/[:：]\s*$/, '');
 	$('search').placeholder = _s('dialog-search-placeholder');
-	$('btn-retry').textContent = _s('dialog-retry');
+	PRIcons.setButton($('btn-retry'), 'refresh', _s('dialog-retry'));
 	$('thr-label').textContent = _s('dialog-min-conf');
 	$('hide-zero-label').textContent = _s('dialog-hide-zero');
-	$('btn-expand').textContent = _s('dialog-expand-all');
-	$('btn-collapse').textContent = _s('dialog-collapse-all');
-	$('btn-clear').textContent = _s('dialog-deselect-all');
-	$('btn-ok').textContent = _s('dialog-ok');
+	PRIcons.setButton($('btn-expand'), 'expand', _s('dialog-expand-all'));
+	PRIcons.setButton($('btn-collapse'), 'collapse', _s('dialog-collapse-all'));
+	PRIcons.setButton($('btn-clear'), 'clear', _s('dialog-deselect-all'));
+	PRIcons.setButton($('btn-ok'), 'check', _s('dialog-ok'));
 	$('btn-cancel').textContent = _s('dialog-cancel');
 
 	var args = window.arguments && window.arguments[0];

@@ -131,3 +131,17 @@ button.chip small { font-size: 10px; opacity: .75; font-variant-numeric: tabular
 button.chip .cpath { font-size: 10px; opacity: .65; }
 .pill.in { color: var(--pr-existing); }
 .nosug { font-size: 11px; color: var(--pr-fg2); font-style: italic; }
+
+/* ---- icons, tiers ---- */
+svg.pri { fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+button.pr { display: inline-flex; align-items: center; gap: 5px; }
+.conf { width: 118px; }
+.conf .tier { width: 4.6em; text-align: right; font-weight: 500; color: var(--pr-fg); }
+.conf .tier.low { color: var(--pr-fg2); }
+button.chip .tdot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; align-self: center; }
+button.chip .tdot.t2 { opacity: .55; }
+button.chip .tdot.t1 { opacity: .25; }
+.movebox { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--pr-fg2); }
+.movebox svg { color: var(--pr-existing); }
+.pill.in.inboxpill { color: var(--pr-fg2); }
+[hidden] { display: none !important; }
