@@ -6,7 +6,7 @@ tags:
 
 # Credits and licenses
 
-PaperRouter is released under the [MPL-2.0](https://github.com/noahweidig/PaperRouter/blob/main/LICENSE). It is a rewrite based on the original Tidy Up plugin by Mike Zhou (Keshen Zhou) and Wight. The add-on icon and docs favicons use the Zotero "folder" icon (AGPL-3.0, [zotero/zotero](https://github.com/zotero/zotero)). The documentation site uses [Lucide](https://lucide.dev) icons under ISC and is built with [Zensical](https://zensical.org).
+PaperRouter is released under the [MPL-2.0](https://github.com/noahweidig/PaperRouter/blob/main/LICENSE). Upstream authors and third-party material are listed in [NOTICE](https://github.com/noahweidig/PaperRouter/blob/main/NOTICE). It is a rewrite based on the original Tidy Up plugin by Mike Zhou (Keshen Zhou) and Wight. The add-on icon and docs favicons use the Zotero "folder" icon (AGPL-3.0, [zotero/zotero](https://github.com/zotero/zotero)). The documentation site uses [Lucide](https://lucide.dev) icons under ISC and is built with [Zensical](https://zensical.org).
 
 ## Contributing
 
