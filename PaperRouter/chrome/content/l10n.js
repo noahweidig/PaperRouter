@@ -109,6 +109,8 @@ var TidyUpL10n = (function() {
             'prefs-max-collections': 'Max collections:',
             'prefs-max-collections-unit': '',
             'prefs-max-collections-hint': 'Recommended limit: {count} collections',
+            'prefs-min-confidence': 'Default min. confidence:',
+            'prefs-min-confidence-hint': '0 = auto (top matches)',
 
             // Preferences - status messages
             'msg-settings-saved': 'Settings saved',
@@ -166,6 +168,11 @@ var TidyUpL10n = (function() {
             'dialog-hide-zero': 'Hide Conf=0',
             'dialog-legend-existing': 'Already in collection',
             'dialog-legend-blacklisted': 'Blacklisted',
+            'dialog-current': 'Already in',
+            'dialog-best': 'Best matches',
+            'dialog-all': 'All collections',
+            'dialog-selected-count': '{n} / {max} selected',
+            'dialog-min-conf': 'Min. confidence',
 
             // Notifications
             'notif-load-success': 'Plugin loaded successfully',
@@ -248,6 +255,8 @@ var TidyUpL10n = (function() {
             'prefs-max-collections': '最大 Collection 数量:',
             'prefs-max-collections-unit': '个',
             'prefs-max-collections-hint': '推荐时最多选择 {count} 个 Collection',
+            'prefs-min-confidence': '默认最低置信度:',
+            'prefs-min-confidence-hint': '0 = 自动（取最佳匹配）',
 
             'msg-settings-saved': '设置已保存',
             'msg-save-failed': '保存失败: {msg}',
@@ -302,6 +311,11 @@ var TidyUpL10n = (function() {
             'dialog-hide-zero': '隐藏 Conf=0',
             'dialog-legend-existing': '已在此 Collection',
             'dialog-legend-blacklisted': '已屏蔽',
+            'dialog-current': '已在其中',
+            'dialog-best': '最佳匹配',
+            'dialog-all': '全部 Collection',
+            'dialog-selected-count': '已选 {n} / {max}',
+            'dialog-min-conf': '最低置信度',
 
             'notif-load-success': '插件加载成功',
             'notif-queue-start': '后台任务开始',
@@ -383,6 +397,8 @@ var TidyUpL10n = (function() {
             'prefs-max-collections': '最大 Collection 數量:',
             'prefs-max-collections-unit': '個',
             'prefs-max-collections-hint': '推薦時最多選擇 {count} 個 Collection',
+            'prefs-min-confidence': '預設最低置信度:',
+            'prefs-min-confidence-hint': '0 = 自動（取最佳匹配）',
 
             'msg-settings-saved': '設定已儲存',
             'msg-save-failed': '儲存失敗: {msg}',
@@ -437,6 +453,11 @@ var TidyUpL10n = (function() {
             'dialog-hide-zero': '隱藏 Conf=0',
             'dialog-legend-existing': '已在此 Collection',
             'dialog-legend-blacklisted': '已遮蔽',
+            'dialog-current': '已在其中',
+            'dialog-best': '最佳匹配',
+            'dialog-all': '全部 Collection',
+            'dialog-selected-count': '已選 {n} / {max}',
+            'dialog-min-conf': '最低置信度',
 
             'notif-load-success': '插件載入成功',
             'notif-queue-start': '背景任務開始',

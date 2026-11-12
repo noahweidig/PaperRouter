@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.3.0 — 2026-11-12
+
+### Changed
+
+- Redesigned collection picker: theme-aware (follows Zotero dark mode), "Already in" and "Best matches" sections above the tree, confidence bars, live search, selection counter, keyboard shortcuts (Enter, Esc, `/`).
+- Faster dialog open: collection types are resolved once in parallel instead of two serial DB reads per collection.
+- Saving shows a toast instead of a modal alert.
+- Removing an existing collection membership no longer blacklists it; only rejecting an auto-suggestion does.
+
+### Added
+
+- Setting for the default minimum confidence (0 = auto).
+
+### Fixed
+
+- Toolbar icon was black in dark mode; it now follows the theme color.
+
 ## 0.2.2 — 2026-09-18
 
 ### Changed
