@@ -2276,6 +2276,9 @@ Output strictly in the above format with no additional content.`;
 		toolbarButton.id = 'tidy-up-toolbar-button';
 		toolbarButton.setAttribute('tooltiptext', 'PaperRouter - Smart add to collections');
 		toolbarButton.style.listStyleImage = `url('${this.rootURI}chrome/content/icon.svg')`;
+		toolbarButton.style.setProperty('-moz-context-properties', 'fill, stroke');
+		toolbarButton.style.fill = 'currentColor';
+		toolbarButton.style.stroke = 'currentColor';
 		toolbarButton.style.width = '28px';
 		toolbarButton.style.height = '28px';
 		toolbarButton.style.padding = '2px';
@@ -2373,13 +2376,11 @@ Output strictly in the above format with no additional content.`;
 		// Update button state
 		if (hasSelection) {
 			toolbarButton.disabled = false;
-			toolbarButton.style.listStyleImage = `url('${this.rootURI}chrome/content/icon.svg')`;
 			toolbarButton.style.cursor = 'pointer';
 			toolbarButton.style.opacity = '1';
 			// this.log('Button state: enabled');
 		} else {
 			toolbarButton.disabled = true;
-			toolbarButton.style.listStyleImage = `url('${this.rootURI}chrome/content/icon-disabled.svg')`;
 			toolbarButton.style.cursor = 'not-allowed';
 			toolbarButton.style.opacity = '0.5';
 			// this.log('Button state: disabled');
@@ -3162,6 +3163,7 @@ Output strictly in the above format with no additional content.`;
 				blacklist: Array.from(itemBlacklist),
 				existingCollections: existingCollectionIds,  // Collection IDs Item belongs to
 				maxCollectionNum: this.maxCollectionNum,  // Max Collections per Item
+				minConfidence: Math.max(0, Math.min(100, parseInt(Zotero.Prefs.get('extensions.tidy-up.minConfidence', true), 10) || 0)),  // 0 = auto
 				language: effectiveLang  // Pass language for dialog i18n
 			};
 			
@@ -3284,13 +3286,7 @@ Output strictly in the above format with no additional content.`;
 			});
 			
 			// Show success prompt
-			var mainWindow = Zotero.getMainWindow();
-			var Services = mainWindow.Services;
-			Services.prompt.alert(
-				mainWindow,
-				'Success',
-				`Item collections have been updated. Total: ${collections.length} collection(s).`
-			);
+			this.showNotification('PaperRouter', `Filed into ${collections.length} collection(s): ${collections.map(c => c.name).join(', ')}`, 'success');
 			
 			this.log('sendItemToCollections: Completed successfully');
 		} catch (e) {

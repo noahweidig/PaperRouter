@@ -94,6 +94,8 @@ var TidyUpPrefs = {
         setText('l10n-collection-limit-desc', 'prefs-collection-limit-desc');
         set('l10n-max-collections', 'prefs-max-collections');
         set('l10n-max-collections-unit', 'prefs-max-collections-unit');
+        set('l10n-min-confidence', 'prefs-min-confidence');
+        set('l10n-min-confidence-hint', 'prefs-min-confidence-hint');
         var langSelect = document.getElementById('language-select');
         if (langSelect && langSelect.menupopup) {
             var items = langSelect.menupopup.querySelectorAll('menuitem');
@@ -684,6 +686,26 @@ var TidyUpPrefs = {
         }
     },
     
+    saveMinConfidence: function() {
+        try {
+            var v = parseInt(document.getElementById('min-confidence').value, 10) || 0;
+            v = Math.max(0, Math.min(100, v));
+            document.getElementById('min-confidence').value = v;
+            Zotero.Prefs.set('extensions.tidy-up.minConfidence', v, true);
+        } catch (e) {
+            this.log('Error saving min confidence: ' + e.message);
+        }
+    },
+
+    loadMinConfidence: function() {
+        try {
+            var v = parseInt(Zotero.Prefs.get('extensions.tidy-up.minConfidence', true), 10) || 0;
+            document.getElementById('min-confidence').value = v;
+        } catch (e) {
+            this.log('Error loading min confidence: ' + e.message);
+        }
+    },
+
     updateMaxCollectionHint: function() {
         var hintLabel = document.getElementById('max-collection-hint');
         var maxNum = parseInt(document.getElementById('max-collection-num').value, 10) || 4;
@@ -1029,6 +1051,7 @@ var TidyUpPrefs = {
             this.loadTestMode();
             
             this.loadMaxCollectionNum();
+            this.loadMinConfidence();
             
             this.loadLlmConfig();
 
@@ -1083,6 +1106,10 @@ var TidyUpPrefs = {
                 testModeMockApi.addEventListener('command', function() { 
                     self.saveTestMode(); 
                 });
+            }
+            var minConfInput = document.getElementById('min-confidence');
+            if (minConfInput) {
+                minConfInput.addEventListener('change', function() { self.saveMinConfidence(); });
             }
             if (maxCollectionNumInput) {
                 maxCollectionNumInput.addEventListener('change', function() { 

@@ -6,6 +6,7 @@
 // 2026 PaperRouter rewrite based on the original Tidy Up plugin.
 pref("extensions.tidy-up.intensity", 100);
 pref("extensions.tidy-up.language", "auto");
+pref("extensions.tidy-up.minConfidence", 0);
 
 pref("extensions.tidy-up.embedding.provider", "");
 pref("extensions.tidy-up.embedding.apiKey", "");
