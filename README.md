@@ -49,6 +49,7 @@ Works on Zotero 7, 8, 9, and 10.0.x.
 - Per-collection confidence score shown in the dialog.
 - Feedback-aware: rejected collections are blacklisted and down-ranked next time.
 - Hierarchy-aware: doesn't suggest a child collection when the parent is already a strong match.
+- Batch mode: select many papers, review top suggestions per paper in one window, file them all at once (adds only).
 - Keyword filter inside the dialog.
 - Configurable cap (default 4 collections per item) and a confidence-threshold slider.
 - Background embedding refresh on startup so the dialog opens fast.

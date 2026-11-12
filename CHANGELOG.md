@@ -9,6 +9,8 @@
 - The new paper's tags, abstract and venue are used, not just its title. Its own entry is excluded when you re-classify an already-filed paper.
 - The index is cached, refreshed automatically when items, tags or collections change, and warmed up shortly after startup.
 
+- **Batch mode.** Select several papers and click the button: one window lists every paper with its top 5 suggestions as toggle chips (best match pre-selected). Filing happens in one transaction and only adds, never removes, memberships. Ranking 100 papers against 300 collections takes about 0.3 s in a mock test. Rejected auto-picks still feed the per-item blacklist.
+
 ### Changed
 
 - Initial selection is now simply the highest-confidence collections. The internal/external quota that could pick weaker matches is gone (the labels still show).

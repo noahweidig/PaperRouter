@@ -2746,11 +2746,11 @@ Output strictly in the above format with no additional content.`;
 
 	// Sort Collections by semantic similarity to Item name (tree structure)
 	// v2.6.2: use cache directly, no longer update on click
-	async SortCollectionsByItemName(itemName, blacklist = new Set(), itemAbstract = '', extra = null) {
+	async SortCollectionsByItemName(itemName, blacklist = new Set(), itemAbstract = '', extra = null, prebuiltTrees = null) {
 		const t0 = Date.now();
 		this.log(`SortCollectionsByItemName: Starting with item name "${itemName}", blacklist size: ${blacklist.size}`);
 		
-		const trees = await this.getAllCollectionsTree();
+		const trees = prebuiltTrees || await this.getAllCollectionsTree();
 		this.log(`[TIMING] getAllCollectionsTree: ${(Date.now() - t0).toFixed(0)}ms (${trees.length} roots)`);
 		
 		let t1 = Date.now();
@@ -3205,6 +3205,139 @@ Output strictly in the above format with no additional content.`;
 		this.log('Context menu item added successfully');
 	},
 
+	// Selected regular items (children resolved to their parent paper, de-duplicated)
+	getSelectedRegularItems() {
+		const out = [];
+		const seen = new Set();
+		try {
+			const pane = Zotero.getActiveZoteroPane();
+			const selected = (pane && pane.getSelectedItems()) || [];
+			for (let it of selected) {
+				if (it.topLevelItem) it = it.topLevelItem;
+				if (!it || seen.has(it.id) || !it.isRegularItem || !it.isRegularItem()) continue;
+				seen.add(it.id);
+				out.push(it);
+			}
+		} catch (e) {
+			this.log('getSelectedRegularItems error: ' + e.message);
+		}
+		return out;
+	},
+
+	// Rank many items against one collection tree. Returns [{itemId, title, existing, suggestions}].
+	async rankBatch(items, topN = 5) {
+		const trees = await this.getAllCollectionsTree();
+		const rows = [];
+		const origLog = this.log;
+		this.log = () => {};   // per-node logging would dominate the runtime for large batches
+		try {
+			let n = 0;
+			for (const item of items) {
+				const title = item.getDisplayTitle() || item.getField('title') || 'Untitled';
+				const blacklist = this.collectionBlacklist.getBlacklist(item.id);
+				const extra = {
+					tags: (item.getTags() || []).map(t => t.tag),
+					venue: item.getField('publicationTitle') || '',
+					excludeItemId: item.id
+				};
+				await this.SortCollectionsByItemName(title, blacklist, item.getField('abstractNote') || '', extra, trees);
+				const existingIds = new Set(item.getCollections());
+				const flat = [];
+				const walk = (nodes) => {
+					for (const node of nodes) {
+						if (node.confidence > 0 && !blacklist.has(node.id) && !existingIds.has(node.id)) flat.push(node);
+						if (node.children && node.children.length) walk(node.children);
+					}
+				};
+				walk(trees);
+				flat.sort((a, b) => b.confidence - a.confidence);
+				const suggestions = flat.slice(0, topN).map(node => {
+					const path = [];
+					for (let p = node.parent; p; p = p.parent) path.unshift(p.name);
+					return { id: node.id, key: node.key, name: node.name, path, confidence: node.confidence };
+				});
+				const existing = [];
+				for (const cid of existingIds) {
+					const c = Zotero.Collections.get(cid);
+					if (c) existing.push({ id: cid, name: c.name });
+				}
+				rows.push({ itemId: item.id, title, existing, suggestions });
+				if (++n % 10 === 0) await new Promise(r => setTimeout(r, 0));   // let the UI breathe
+			}
+		} finally {
+			this.log = origLog;
+		}
+		return rows;
+	},
+
+	// Add items to collections (never removes memberships). assignments: [{itemId, collections:[{id}]}]
+	async addItemsToCollections(assignments, itemsById) {
+		let added = 0;
+		const touched = new Set();
+		await Zotero.DB.executeTransaction(async () => {
+			for (const a of assignments) {
+				const item = itemsById.get(a.itemId);
+				if (!item) continue;
+				const have = new Set(item.getCollections());
+				for (const c of a.collections) {
+					const cid = parseInt(c.id, 10);
+					if (have.has(cid)) continue;
+					const collection = await Zotero.Collections.getAsync(cid);
+					if (!collection) continue;
+					await collection.addItem(item.id);
+					have.add(cid);
+					touched.add(cid);
+					added++;
+				}
+			}
+		});
+		return { added, collections: touched.size };
+	},
+
+	async showBatchDialog(items) {
+		const t0 = Date.now();
+		this.showProgressDialog('PaperRouter', `Ranking ${items.length} papers...`);
+		let rows;
+		try {
+			rows = await this.rankBatch(items);
+		} finally {
+			this.closeProgressDialog();
+		}
+		this.log(`[TIMING] rankBatch: ${items.length} items in ${(Date.now() - t0).toFixed(0)}ms`);
+
+		const args = {
+			rows,
+			maxCollectionNum: this.maxCollectionNum,
+			minConfidence: Math.max(0, Math.min(100, parseInt(Zotero.Prefs.get('extensions.tidy-up.minConfidence', true), 10) || 0)),
+			language: (typeof TidyUpL10n !== 'undefined' ? TidyUpL10n.getEffectiveLanguage() : 'zh-CN'),
+			sendToCollections: false,
+			assignments: null,
+			rejections: []
+		};
+		const mainWindow = Zotero.getMainWindow();
+		if (!mainWindow) return;
+		mainWindow.openDialog('chrome://tidy-up-trae/content/batchDialog.xhtml', '', 'chrome,centerscreen,modal,resizable', args);
+
+		for (const row of rows) {
+			for (const s of row.suggestions) this.collectionBlacklist.recordRecommendation(s.id);
+		}
+		for (const r of args.rejections || []) {
+			await this.collectionBlacklist.updateBlacklist(r.itemId, r.collectionId, true);
+		}
+		await this.collectionBlacklist.save();
+
+		if (args.sendToCollections && args.assignments && args.assignments.length) {
+			try {
+				const byId = new Map(items.map(i => [i.id, i]));
+				const res = await this.addItemsToCollections(args.assignments, byId);
+				this.showNotification('PaperRouter', `Filed ${args.assignments.length} paper(s): ${res.added} new assignment(s) in ${res.collections} collection(s)`, 'success');
+			} catch (e) {
+				this.log(`showBatchDialog: filing failed: ${e.message}`);
+				this.showNotification('PaperRouter', `Failed to file papers: ${e.message}`, 'error');
+			}
+		}
+	},
+
 	// Show Collections selection dialog
 	async showSimpleDialog() {
 		const tStart = Date.now();
@@ -3218,6 +3351,13 @@ Output strictly in the above format with no additional content.`;
 		this.log('showSimpleDialog: Starting...');
 		
 		try {
+			// Several papers selected: batch mode
+			const batchItems = this.getSelectedRegularItems();
+			if (batchItems.length > 1) {
+				await this.showBatchDialog(batchItems);
+				return;
+			}
+
 			// Get currently selected item
 			var selectedItem = null;
 			var selectedItemName = '';
