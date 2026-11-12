@@ -4,9 +4,9 @@
  * Writes docs/favicon.svg, favicon.ico, PNGs, apple-touch-icon.png, android-chrome and
  * maskable icons, mstile, safari-pinned-tab.svg, site.webmanifest and browserconfig.xml.
  */
-const fs = require('fs');
-const path = require('path');
-const { execFileSync } = require('child_process');
+const fs = require('node:fs');
+const path = require('node:path');
+const { execFileSync } = require('node:child_process');
 const { chromium } = require('playwright');
 
 const out = path.join(__dirname, '..', 'docs');
@@ -90,4 +90,4 @@ const write = (name, data) => fs.writeFileSync(path.join(out, name), data);
 	}, null, 2) + '\n');
 	write('browserconfig.xml', `<?xml version="1.0" encoding="utf-8"?>\n<browserconfig><msapplication><tile><square150x150logo src="mstile-150x150.png"/><TileColor>${BLUE}</TileColor></tile></msapplication></browserconfig>\n`);
 	console.log('favicons written to docs/');
-})();
+})().catch(e => { console.error(e); process.exit(1); });

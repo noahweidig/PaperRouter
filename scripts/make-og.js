@@ -1,5 +1,5 @@
 /* Regenerate docs/og.png (1200x630 social card). Needs Playwright. Run from the repo root: node scripts/make-og.js */
-const path = require('path');
+const path = require('node:path');
 const { chromium } = require('playwright');
 const glyph = '<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/><path d="M12 10v6"/><path d="m15 13-3 3-3-3"/>';
 const html = `<body style="margin:0;width:1200px;height:630px;background:radial-gradient(60% 55% at 50% 0%,#1d3a4f,#0e1116 70%);font-family:Inter,system-ui,Segoe UI,Helvetica,Arial,sans-serif;color:#f4f5f8;text-align:center;position:relative">
@@ -16,4 +16,4 @@ const html = `<body style="margin:0;width:1200px;height:630px;background:radial-
 	await p.screenshot({ path: path.join(__dirname, '..', 'docs', 'og.png') });
 	await b.close();
 	console.log('docs/og.png written');
-})();
+})().catch(e => { console.error(e); process.exit(1); });
