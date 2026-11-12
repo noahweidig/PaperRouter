@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Existing tag to build and attach the xpi to (e.g. v0.3.0)'
+        description: 'Release tag (e.g. v0.5.0). Created on this branch tip if it does not exist; xpi is attached either way.'
         required: false
 
 permissions:
@@ -17,27 +17,32 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.tag || github.ref }}
-      - name: Check tag matches manifest version
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Resolve tag and check it matches the manifest version
+        id: tag
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
         run: |
+          TAG="$INPUT_TAG"
+          [ -n "$TAG" ] || { [ "${GITHUB_REF_TYPE}" = "tag" ] && TAG="${GITHUB_REF_NAME}"; } || true
+          case "$TAG" in ''|v[0-9]*.[0-9]*.[0-9]*) ;; *) echo "invalid tag: $TAG"; exit 1 ;; esac
           V=$(grep '"version"' PaperRouter/manifest.json | head -1 | sed -E 's/.*"([0-9.]+)".*/\1/')
-          [ "v$V" = "${GITHUB_REF_NAME}" ] || { echo "tag ${GITHUB_REF_NAME} != manifest v$V"; exit 1; }
+          if [ -n "$TAG" ] && [ "v$V" != "$TAG" ]; then echo "tag $TAG != manifest v$V"; exit 1; fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$V" >> "$GITHUB_OUTPUT"
       - run: bash scripts/build-xpi.sh
       - uses: actions/upload-artifact@v4
         with:
           name: xpi
           path: dist/*.xpi
       - name: Publish release
-        if: startsWith(github.ref, 'refs/tags/v') || inputs.tag != ''
+        if: steps.tag.outputs.tag != ''
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.tag.outputs.tag }}
+          V: ${{ steps.tag.outputs.version }}
         run: |
-          TAG="${{ inputs.tag || github.ref_name }}"
-          V=${TAG#v}
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" "dist/paperrouter-$V.xpi" --clobber
           else
-            gh release create "$TAG" "dist/paperrouter-$V.xpi" --title "$TAG" --generate-notes
+            gh release create "$TAG" "dist/paperrouter-$V.xpi" --title "$TAG" --generate-notes --target "$GITHUB_SHA"
           fi
