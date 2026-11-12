@@ -4,8 +4,8 @@
 
 一个帮 Zotero 论文找收藏夹的插件。
 
-[![Stars](https://img.shields.io/github/stars/KESHEN-ZHOU/PaperRouter?style=flat-square)](https://github.com/KESHEN-ZHOU/PaperRouter/stargazers)
-[![Version](https://img.shields.io/github/v/tag/KESHEN-ZHOU/PaperRouter?label=version&style=flat-square)](https://github.com/KESHEN-ZHOU/PaperRouter/releases)
+[![Stars](https://img.shields.io/github/stars/noahweidig/PaperRouter?style=flat-square)](https://github.com/noahweidig/PaperRouter/stargazers)
+[![Version](https://img.shields.io/github/v/tag/noahweidig/PaperRouter?label=version&style=flat-square)](https://github.com/noahweidig/PaperRouter/releases)
 [![License](https://img.shields.io/badge/license-MPL--2.0-blue.svg?style=flat-square)](./LICENSE)
 
 [English](./README.md) · [简体中文](./README.zh-CN.md)

@@ -14,7 +14,7 @@ describe('callOpenAICompat', () => {
       }
       const headers = { 'Content-Type': 'application/json; charset=utf-8' };
       if (config.apiKey) headers['Authorization'] = 'Bearer ' + config.apiKey;
-      if (config.provider === 'openrouter') headers['HTTP-Referer'] = 'https://github.com/KESHEN-ZHOU/PaperRouter';
+      if (config.provider === 'openrouter') headers['HTTP-Referer'] = 'https://github.com/noahweidig/PaperRouter';
       const resp = await fetch(baseUrl + '/chat/completions', {
         method: 'POST', headers,
         body: JSON.stringify({ model: config.model, messages: [{ role: 'user', content: prompt }], max_tokens: 50, temperature: 0.3 })
@@ -44,7 +44,7 @@ describe('callOpenAICompat', () => {
       'ping'
     );
     const call = global.fetch.mock.calls[0];
-    expect(call[1].headers['HTTP-Referer']).toBe('https://github.com/KESHEN-ZHOU/PaperRouter');
+    expect(call[1].headers['HTTP-Referer']).toBe('https://github.com/noahweidig/PaperRouter');
   });
 
   test('ollama: no Authorization header when apiKey empty', async () => {
