@@ -19,9 +19,12 @@ jobs:
       - uses: actions/checkout@v4
       - name: Resolve tag and check it matches the manifest version
         id: tag
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
         run: |
-          TAG="${{ inputs.tag }}"
+          TAG="$INPUT_TAG"
           [ -n "$TAG" ] || { [ "${GITHUB_REF_TYPE}" = "tag" ] && TAG="${GITHUB_REF_NAME}"; } || true
+          case "$TAG" in ''|v[0-9]*.[0-9]*.[0-9]*) ;; *) echo "invalid tag: $TAG"; exit 1 ;; esac
           V=$(grep '"version"' PaperRouter/manifest.json | head -1 | sed -E 's/.*"([0-9.]+)".*/\1/')
           if [ -n "$TAG" ] && [ "v$V" != "$TAG" ]; then echo "tag $TAG != manifest v$V"; exit 1; fi
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
