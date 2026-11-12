@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.0 — 2026-11-12
+
+### Changed
+
+- New toolbar icon (folder with an arrow) drawn in the Zotero 20px outline style; uses Zotero's secondary icon color, so it matches the neighbouring buttons in light and dark mode.
+
+### Fixed
+
+- Startup error "can't access property indexOf, baseUrl is null" when an embedding provider and key were set but the base URL was empty. OpenAI and Ollama now fall back to their default URL; other providers get a clear "base URL is not set" message.
+
 ## 0.3.0 — 2026-11-12
 
 ### Changed

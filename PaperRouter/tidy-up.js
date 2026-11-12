@@ -2276,9 +2276,9 @@ Output strictly in the above format with no additional content.`;
 		toolbarButton.id = 'tidy-up-toolbar-button';
 		toolbarButton.setAttribute('tooltiptext', 'PaperRouter - Smart add to collections');
 		toolbarButton.style.listStyleImage = `url('${this.rootURI}chrome/content/icon.svg')`;
-		toolbarButton.style.setProperty('-moz-context-properties', 'fill, stroke');
-		toolbarButton.style.fill = 'currentColor';
-		toolbarButton.style.stroke = 'currentColor';
+		toolbarButton.style.setProperty('-moz-context-properties', 'fill, fill-opacity, stroke, stroke-opacity');
+		toolbarButton.style.fill = 'var(--fill-secondary, currentColor)';
+		toolbarButton.style.stroke = 'var(--fill-secondary, currentColor)';
 		toolbarButton.style.width = '28px';
 		toolbarButton.style.height = '28px';
 		toolbarButton.style.padding = '2px';
@@ -3586,6 +3586,11 @@ Output strictly in the above format with no additional content.`;
 	async getEmbeddingViaOpenAICompat(text) {
 		const cfg = this.embeddingConfig;
 		let baseUrl = cfg.baseUrl;
+		if (!baseUrl) {
+			if (cfg.provider === 'openai') baseUrl = 'https://api.openai.com/v1';
+			else if (cfg.provider === 'ollama') baseUrl = 'http://localhost:11434';
+			else throw new Error('Embedding base URL is not set (Settings > PaperRouter)');
+		}
 		if (baseUrl.indexOf('/v1') === -1 && cfg.provider !== 'ollama') {
 			baseUrl = baseUrl.replace(/\/$/, '') + '/v1';
 		}
