@@ -3,8 +3,28 @@
     "paperrouter@keshen-zhou.github.io": {
       "updates": [
         {
+          "version": "0.5.0",
+          "update_link": "https://github.com/noahweidig/PaperRouter/releases/download/v0.5.0/paperrouter-0.5.0.xpi",
+          "applications": {
+            "zotero": {
+              "strict_min_version": "7.0",
+              "strict_max_version": "10.0.*"
+            }
+          }
+        },
+        {
+          "version": "0.4.0",
+          "update_link": "https://github.com/noahweidig/PaperRouter/releases/download/v0.4.0/paperrouter-0.4.0.xpi",
+          "applications": {
+            "zotero": {
+              "strict_min_version": "7.0",
+              "strict_max_version": "10.0.*"
+            }
+          }
+        },
+        {
           "version": "0.3.0",
-          "update_link": "https://github.com/KESHEN-ZHOU/PaperRouter/releases/download/v0.3.0/paperrouter-0.3.0.xpi",
+          "update_link": "https://github.com/noahweidig/PaperRouter/releases/download/v0.3.0/paperrouter-0.3.0.xpi",
           "applications": {
             "zotero": {
               "strict_min_version": "7.0",
@@ -14,7 +34,7 @@
         },
         {
           "version": "0.2.2",
-          "update_link": "https://github.com/KESHEN-ZHOU/PaperRouter/releases/download/v0.2.2/paperrouter-0.2.2.xpi",
+          "update_link": "https://github.com/noahweidig/PaperRouter/releases/download/v0.2.2/paperrouter-0.2.2.xpi",
           "applications": {
             "zotero": {
               "strict_min_version": "7.0",
@@ -24,7 +44,7 @@
         },
         {
           "version": "0.2.1",
-          "update_link": "https://github.com/KESHEN-ZHOU/PaperRouter/releases/download/v0.2.1/paperrouter-0.2.1.xpi",
+          "update_link": "https://github.com/noahweidig/PaperRouter/releases/download/v0.2.1/paperrouter-0.2.1.xpi",
           "applications": {
             "zotero": {
               "strict_min_version": "7.0",
@@ -34,7 +54,7 @@
         },
         {
           "version": "0.2.0",
-          "update_link": "https://github.com/KESHEN-ZHOU/PaperRouter/releases/download/v0.2.0/paperrouter-0.2.0.xpi",
+          "update_link": "https://github.com/noahweidig/PaperRouter/releases/download/v0.2.0/paperrouter-0.2.0.xpi",
           "applications": {
             "zotero": {
               "strict_min_version": "7.0",

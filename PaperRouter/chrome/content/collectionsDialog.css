@@ -112,3 +112,22 @@ label.row.hit .name { background: color-mix(in srgb, gold 45%, transparent); bor
 #count { font-size: 12px; font-weight: 600; padding: 2px 9px; border-radius: 10px; background: var(--pr-accent-soft); }
 #count.full { background: color-mix(in srgb, #d9534f 22%, transparent); }
 #tip { flex: 1; min-width: 0; font-size: 11px; color: var(--pr-fg2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---- batch dialog ---- */
+#hint { font-size: 11px; color: var(--pr-fg2); }
+.brow { padding: 8px 12px; border-bottom: 1px solid var(--pr-border); }
+.brow:last-child { border-bottom: 0; }
+.btitle { font-size: 13px; font-weight: 600; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.bmeta { margin-top: 4px; display: flex; flex-wrap: wrap; gap: 5px; align-items: center; font-size: 11px; color: var(--pr-fg2); }
+.chips { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 6px; }
+button.chip {
+	font: inherit; font-size: 12px; padding: 3px 10px; border-radius: 12px; cursor: default; color: inherit;
+	border: 1px solid var(--pr-border); background: transparent; display: inline-flex; gap: 6px; align-items: baseline;
+}
+button.chip:hover:not(:disabled) { background: var(--pr-hover); }
+button.chip.on { background: var(--pr-accent); border-color: transparent; color: #fff; }
+button.chip:disabled { opacity: .4; }
+button.chip small { font-size: 10px; opacity: .75; font-variant-numeric: tabular-nums; }
+button.chip .cpath { font-size: 10px; opacity: .65; }
+.pill.in { color: var(--pr-existing); }
+.nosug { font-size: 11px; color: var(--pr-fg2); font-style: italic; }

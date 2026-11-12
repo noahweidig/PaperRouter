@@ -1753,6 +1753,18 @@ Output strictly in the above format with no additional content.`;
 		
 		// Load LLM API config from preferences
 		this.loadLlmConfig();
+
+		// Keep the local ranking index fresh, and warm it up so the first dialog opens fast
+		try {
+			this._localRankNotifierID = Zotero.Notifier.registerObserver(
+				{ notify: () => this.markLocalRankDirty() },
+				['collection-item', 'item', 'item-tag', 'tag', 'collection'],
+				'paperrouter-localrank'
+			);
+		} catch (e) {
+			this.log(`Local rank observer failed: ${e.message}`);
+		}
+		setTimeout(() => { this.getLocalRankIndex().catch(e => this.log(`Local rank warm-up failed: ${e.message}`)); }, 6000);
 		
 		// Init Collection type cache
 		await this.collectionTypeCache.init(rootURI);
@@ -2034,9 +2046,12 @@ Output strictly in the above format with no additional content.`;
 		this.registerContextMenu();
 		
 		// Show load success notification (delayed for stats)
-		setTimeout(() => {
-			this.showLoadSuccessNotification();
-		}, 3500);
+		// Only worth showing when an embedding API is configured; offline mode has no stats to report.
+		if (this.embeddingConfig.provider && this.embeddingConfig.apiKey) {
+			setTimeout(() => {
+				this.showLoadSuccessNotification();
+			}, 3500);
+		}
 	},
 	
 	// Show load success notification (with stats)
@@ -2276,9 +2291,9 @@ Output strictly in the above format with no additional content.`;
 		toolbarButton.id = 'tidy-up-toolbar-button';
 		toolbarButton.setAttribute('tooltiptext', 'PaperRouter - Smart add to collections');
 		toolbarButton.style.listStyleImage = `url('${this.rootURI}chrome/content/icon.svg')`;
-		toolbarButton.style.setProperty('-moz-context-properties', 'fill, stroke');
-		toolbarButton.style.fill = 'currentColor';
-		toolbarButton.style.stroke = 'currentColor';
+		toolbarButton.style.setProperty('-moz-context-properties', 'fill, fill-opacity, stroke, stroke-opacity');
+		toolbarButton.style.fill = 'var(--fill-secondary, currentColor)';
+		toolbarButton.style.stroke = 'var(--fill-secondary, currentColor)';
 		toolbarButton.style.width = '28px';
 		toolbarButton.style.height = '28px';
 		toolbarButton.style.padding = '2px';
@@ -2434,6 +2449,12 @@ Output strictly in the above format with no additional content.`;
 
 	// Remove plugin UI from all windows
 	removeFromAllWindows() {
+		try {
+			if (this._localRankNotifierID) {
+				Zotero.Notifier.unregisterObserver(this._localRankNotifierID);
+				this._localRankNotifierID = null;
+			}
+		} catch (e) {}
 		var windows = Zotero.getMainWindows();
 		for (let win of windows) {
 			if (!win.ZoteroPane) continue;
@@ -2516,6 +2537,103 @@ Output strictly in the above format with no additional content.`;
 		}
 		
 		return node;
+	},
+
+	// ---- Local ranking (no API key): learns from items already filed in each collection ----
+	_localRank: { idx: null, dirty: true, building: null },
+
+	markLocalRankDirty() {
+		this._localRank.dirty = true;
+	},
+
+	async loadLocalRankData() {
+		const q = (sql) => Zotero.DB.queryAsync(sql);
+		const colRows = await q("SELECT collectionID AS cid, collectionName AS name FROM collections " +
+			"WHERE collectionID NOT IN (SELECT collectionID FROM deletedCollections)");
+		const memRows = await q("SELECT ci.collectionID AS cid, ci.itemID AS iid FROM collectionItems ci " +
+			"JOIN items i ON i.itemID = ci.itemID JOIN itemTypes t ON t.itemTypeID = i.itemTypeID " +
+			"WHERE t.typeName NOT IN ('attachment', 'note', 'annotation') " +
+			"AND ci.itemID NOT IN (SELECT itemID FROM deletedItems)");
+		const fieldRows = await q("SELECT d.itemID AS iid, f.fieldName AS field, v.value AS value FROM itemData d " +
+			"JOIN fields f ON f.fieldID = d.fieldID JOIN itemDataValues v ON v.valueID = d.valueID " +
+			"WHERE f.fieldName IN ('title', 'abstractNote', 'publicationTitle') " +
+			"AND d.itemID IN (SELECT itemID FROM collectionItems)");
+		const tagRows = await q("SELECT it.itemID AS iid, t.name AS name FROM itemTags it " +
+			"JOIN tags t ON t.tagID = it.tagID WHERE it.itemID IN (SELECT itemID FROM collectionItems)");
+
+		const items = new Map();
+		for (const r of memRows || []) {
+			let it = items.get(r.iid);
+			if (!it) { it = { id: r.iid, title: '', abstract: '', venue: '', tags: [], collectionIds: [] }; items.set(r.iid, it); }
+			it.collectionIds.push(r.cid);
+		}
+		for (const r of fieldRows || []) {
+			const it = items.get(r.iid);
+			if (!it) continue;
+			if (r.field === 'title') it.title = r.value;
+			else if (r.field === 'abstractNote') it.abstract = r.value;
+			else if (r.field === 'publicationTitle') it.venue = r.value;
+		}
+		for (const r of tagRows || []) {
+			const it = items.get(r.iid);
+			if (it) it.tags.push(r.name);
+		}
+		return { collections: (colRows || []).map(r => ({ id: r.cid, name: r.name })), items: Array.from(items.values()) };
+	},
+
+	// Cached index; rebuilt lazily after any collection/item/tag change.
+	async getLocalRankIndex() {
+		const st = this._localRank;
+		if (st.idx && !st.dirty) return st.idx;
+		if (st.building) return st.building;
+		st.building = (async () => {
+			try {
+				st.dirty = false;  // events during the build set it again
+				const t0 = Date.now();
+				const data = await this.loadLocalRankData();
+				st.idx = PaperRouterLocalRank.buildIndex(data);
+				this.log(`[TIMING] local rank index: ${data.items.length} items, ${data.collections.length} collections, ${(Date.now() - t0).toFixed(0)}ms`);
+				return st.idx;
+			} catch (e) {
+				st.dirty = true;
+				throw e;
+			} finally {
+				st.building = null;
+			}
+		})();
+		return st.building;
+	},
+
+	async calculateTreeLocalRank(trees, itemName, blacklist, itemAbstract, extra) {
+		const idx = await this.getLocalRankIndex();
+		const scores = PaperRouterLocalRank.score(idx, {
+			title: itemName,
+			abstract: itemAbstract || '',
+			tags: extra?.tags || [],
+			venue: extra?.venue || ''
+		}, extra?.excludeItemId ?? null);
+		const walk = (nodes) => {
+			for (const node of nodes) {
+				if (blacklist.has(node.id)) {
+					node.confidence = 0;
+				} else {
+					const raw = scores.get(node.id) || 0;
+					node.confidence = this.collectionBlacklist.applyRejectionPenalty(node.id, raw);
+				}
+				if (node.children && node.children.length) walk(node.children);
+			}
+		};
+		walk(trees);
+	},
+
+	// Local ranking with the old letter-count similarity as a safety net.
+	async calculateTreeLocal(trees, itemName, blacklist, itemAbstract, extra) {
+		try {
+			await this.calculateTreeLocalRank(trees, itemName, blacklist, itemAbstract, extra);
+		} catch (e) {
+			this.log(`Local rank failed (${e.message}), using legacy similarity`);
+			await this.calculateTreeSimilarity(trees, itemName, blacklist);
+		}
 	},
 
 	// Compute similarity for tree Collections
@@ -2628,11 +2746,11 @@ Output strictly in the above format with no additional content.`;
 
 	// Sort Collections by semantic similarity to Item name (tree structure)
 	// v2.6.2: use cache directly, no longer update on click
-	async SortCollectionsByItemName(itemName, blacklist = new Set(), itemAbstract = '') {
+	async SortCollectionsByItemName(itemName, blacklist = new Set(), itemAbstract = '', extra = null, prebuiltTrees = null) {
 		const t0 = Date.now();
 		this.log(`SortCollectionsByItemName: Starting with item name "${itemName}", blacklist size: ${blacklist.size}`);
 		
-		const trees = await this.getAllCollectionsTree();
+		const trees = prebuiltTrees || await this.getAllCollectionsTree();
 		this.log(`[TIMING] getAllCollectionsTree: ${(Date.now() - t0).toFixed(0)}ms (${trees.length} roots)`);
 		
 		let t1 = Date.now();
@@ -2676,7 +2794,7 @@ Output strictly in the above format with no additional content.`;
 				// Zero-shot failed, fallback to similarity
 				this.log('Zero-shot classification failed, falling back to similarity calculation');
 				t1 = Date.now();
-				await this.calculateTreeSimilarity(trees, itemName, blacklist);
+				await this.calculateTreeLocal(trees, itemName, blacklist, itemAbstract, extra);
 				this.log(`[TIMING] calculateTreeSimilarity: ${(Date.now() - t1).toFixed(0)}ms`);
 			}
 		} else {
@@ -2692,12 +2810,12 @@ Output strictly in the above format with no additional content.`;
 			} else if (hasEmbeddingConfig) {
 				this.log('Embedding API configured but cache is empty, using local cosine similarity');
 				// Cache empty, use local cosine similarity
-				await this.calculateTreeSimilarity(trees, itemName, blacklist);
+				await this.calculateTreeLocal(trees, itemName, blacklist, itemAbstract, extra);
 				this.log(`[TIMING] calculateTreeSimilarity: ${(Date.now() - t1).toFixed(0)}ms`);
 			} else {
 				this.log('Using local cosine similarity');
 				// Use local cosine similarity
-				await this.calculateTreeSimilarity(trees, itemName, blacklist);
+				await this.calculateTreeLocal(trees, itemName, blacklist, itemAbstract, extra);
 				this.log(`[TIMING] calculateTreeSimilarity: ${(Date.now() - t1).toFixed(0)}ms`);
 			}
 		}
@@ -3087,6 +3205,139 @@ Output strictly in the above format with no additional content.`;
 		this.log('Context menu item added successfully');
 	},
 
+	// Selected regular items (children resolved to their parent paper, de-duplicated)
+	getSelectedRegularItems() {
+		const out = [];
+		const seen = new Set();
+		try {
+			const pane = Zotero.getActiveZoteroPane();
+			const selected = (pane && pane.getSelectedItems()) || [];
+			for (let it of selected) {
+				if (it.topLevelItem) it = it.topLevelItem;
+				if (!it || seen.has(it.id) || !it.isRegularItem || !it.isRegularItem()) continue;
+				seen.add(it.id);
+				out.push(it);
+			}
+		} catch (e) {
+			this.log('getSelectedRegularItems error: ' + e.message);
+		}
+		return out;
+	},
+
+	// Rank many items against one collection tree. Returns [{itemId, title, existing, suggestions}].
+	async rankBatch(items, topN = 5) {
+		const trees = await this.getAllCollectionsTree();
+		const rows = [];
+		const origLog = this.log;
+		this.log = () => {};   // per-node logging would dominate the runtime for large batches
+		try {
+			let n = 0;
+			for (const item of items) {
+				const title = item.getDisplayTitle() || item.getField('title') || 'Untitled';
+				const blacklist = this.collectionBlacklist.getBlacklist(item.id);
+				const extra = {
+					tags: (item.getTags() || []).map(t => t.tag),
+					venue: item.getField('publicationTitle') || '',
+					excludeItemId: item.id
+				};
+				await this.SortCollectionsByItemName(title, blacklist, item.getField('abstractNote') || '', extra, trees);
+				const existingIds = new Set(item.getCollections());
+				const flat = [];
+				const walk = (nodes) => {
+					for (const node of nodes) {
+						if (node.confidence > 0 && !blacklist.has(node.id) && !existingIds.has(node.id)) flat.push(node);
+						if (node.children && node.children.length) walk(node.children);
+					}
+				};
+				walk(trees);
+				flat.sort((a, b) => b.confidence - a.confidence);
+				const suggestions = flat.slice(0, topN).map(node => {
+					const path = [];
+					for (let p = node.parent; p; p = p.parent) path.unshift(p.name);
+					return { id: node.id, key: node.key, name: node.name, path, confidence: node.confidence };
+				});
+				const existing = [];
+				for (const cid of existingIds) {
+					const c = Zotero.Collections.get(cid);
+					if (c) existing.push({ id: cid, name: c.name });
+				}
+				rows.push({ itemId: item.id, title, existing, suggestions });
+				if (++n % 10 === 0) await new Promise(r => setTimeout(r, 0));   // let the UI breathe
+			}
+		} finally {
+			this.log = origLog;
+		}
+		return rows;
+	},
+
+	// Add items to collections (never removes memberships). assignments: [{itemId, collections:[{id}]}]
+	async addItemsToCollections(assignments, itemsById) {
+		let added = 0;
+		const touched = new Set();
+		await Zotero.DB.executeTransaction(async () => {
+			for (const a of assignments) {
+				const item = itemsById.get(a.itemId);
+				if (!item) continue;
+				const have = new Set(item.getCollections());
+				for (const c of a.collections) {
+					const cid = parseInt(c.id, 10);
+					if (have.has(cid)) continue;
+					const collection = await Zotero.Collections.getAsync(cid);
+					if (!collection) continue;
+					await collection.addItem(item.id);
+					have.add(cid);
+					touched.add(cid);
+					added++;
+				}
+			}
+		});
+		return { added, collections: touched.size };
+	},
+
+	async showBatchDialog(items) {
+		const t0 = Date.now();
+		this.showProgressDialog('PaperRouter', `Ranking ${items.length} papers...`);
+		let rows;
+		try {
+			rows = await this.rankBatch(items);
+		} finally {
+			this.closeProgressDialog();
+		}
+		this.log(`[TIMING] rankBatch: ${items.length} items in ${(Date.now() - t0).toFixed(0)}ms`);
+
+		const args = {
+			rows,
+			maxCollectionNum: this.maxCollectionNum,
+			minConfidence: Math.max(0, Math.min(100, parseInt(Zotero.Prefs.get('extensions.tidy-up.minConfidence', true), 10) || 0)),
+			language: (typeof TidyUpL10n !== 'undefined' ? TidyUpL10n.getEffectiveLanguage() : 'zh-CN'),
+			sendToCollections: false,
+			assignments: null,
+			rejections: []
+		};
+		const mainWindow = Zotero.getMainWindow();
+		if (!mainWindow) return;
+		mainWindow.openDialog('chrome://tidy-up-trae/content/batchDialog.xhtml', '', 'chrome,centerscreen,modal,resizable', args);
+
+		for (const row of rows) {
+			for (const s of row.suggestions) this.collectionBlacklist.recordRecommendation(s.id);
+		}
+		for (const r of args.rejections || []) {
+			await this.collectionBlacklist.updateBlacklist(r.itemId, r.collectionId, true);
+		}
+		await this.collectionBlacklist.save();
+
+		if (args.sendToCollections && args.assignments && args.assignments.length) {
+			try {
+				const byId = new Map(items.map(i => [i.id, i]));
+				const res = await this.addItemsToCollections(args.assignments, byId);
+				this.showNotification('PaperRouter', `Filed ${args.assignments.length} paper(s): ${res.added} new assignment(s) in ${res.collections} collection(s)`, 'success');
+			} catch (e) {
+				this.log(`showBatchDialog: filing failed: ${e.message}`);
+				this.showNotification('PaperRouter', `Failed to file papers: ${e.message}`, 'error');
+			}
+		}
+	},
+
 	// Show Collections selection dialog
 	async showSimpleDialog() {
 		const tStart = Date.now();
@@ -3100,6 +3351,13 @@ Output strictly in the above format with no additional content.`;
 		this.log('showSimpleDialog: Starting...');
 		
 		try {
+			// Several papers selected: batch mode
+			const batchItems = this.getSelectedRegularItems();
+			if (batchItems.length > 1) {
+				await this.showBatchDialog(batchItems);
+				return;
+			}
+
 			// Get currently selected item
 			var selectedItem = null;
 			var selectedItemName = '';
@@ -3139,10 +3397,17 @@ Output strictly in the above format with no additional content.`;
 		
 		// Call sort function, get similarity-sorted collections tree
 		let collectionData = [];
+		const itemExtra = { tags: [], venue: '', excludeItemId: itemId };
 		try {
 			const tBeforeSort = Date.now();
 			this.log('showSimpleDialog: Calling SortCollectionsByItemName...');
-			collectionData = await this.SortCollectionsByItemName(selectedItemName, itemBlacklist, selectedItemAbstract);
+			try {
+				if (selectedItem) {
+					itemExtra.tags = (selectedItem.getTags() || []).map(t => t.tag);
+					itemExtra.venue = selectedItem.getField('publicationTitle') || '';
+				}
+			} catch (e) {}
+			collectionData = await this.SortCollectionsByItemName(selectedItemName, itemBlacklist, selectedItemAbstract, itemExtra);
 			this.log(`[TIMING] SortCollectionsByItemName: ${(Date.now() - tBeforeSort).toFixed(0)}ms`);
 			this.log(`showSimpleDialog: Got ${collectionData.length} root collections`);
 		} catch (e) {
@@ -3159,6 +3424,8 @@ Output strictly in the above format with no additional content.`;
 				selectedCollections: null,
 				sendToCollections: false,
 				itemName: selectedItemName,
+				itemAbstract: selectedItemAbstract,
+				itemExtra: itemExtra,
 				itemId: itemId,
 				blacklist: Array.from(itemBlacklist),
 				existingCollections: existingCollectionIds,  // Collection IDs Item belongs to
@@ -3586,6 +3853,11 @@ Output strictly in the above format with no additional content.`;
 	async getEmbeddingViaOpenAICompat(text) {
 		const cfg = this.embeddingConfig;
 		let baseUrl = cfg.baseUrl;
+		if (!baseUrl) {
+			if (cfg.provider === 'openai') baseUrl = 'https://api.openai.com/v1';
+			else if (cfg.provider === 'ollama') baseUrl = 'http://localhost:11434';
+			else throw new Error('Embedding base URL is not set (Settings > PaperRouter)');
+		}
 		if (baseUrl.indexOf('/v1') === -1 && cfg.provider !== 'ollama') {
 			baseUrl = baseUrl.replace(/\/$/, '') + '/v1';
 		}

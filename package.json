@@ -1,14 +1,14 @@
 {
   "name": "paperrouter",
-  "version": "0.3.0",
+  "version": "0.5.0",
   "description": "Zotero plugin that suggests collections for your papers via LLM or embedding similarity.",
-  "homepage": "https://github.com/KESHEN-ZHOU/PaperRouter",
+  "homepage": "https://github.com/noahweidig/PaperRouter",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/KESHEN-ZHOU/PaperRouter.git"
+    "url": "git+https://github.com/noahweidig/PaperRouter.git"
   },
   "bugs": {
-    "url": "https://github.com/KESHEN-ZHOU/PaperRouter/issues"
+    "url": "https://github.com/noahweidig/PaperRouter/issues"
   },
   "scripts": {
     "test": "jest",

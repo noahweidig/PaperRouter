@@ -111,7 +111,7 @@ function setSelected(id, on, user) {
 	return true;
 }
 
-// Pick up to `room` new collections: >=70% internal, <=30% external, rest by confidence.
+// Pick the best `room` new collections by confidence (>= threshold when given).
 function autoSelect(threshold) {
 	S.selected.forEach(function (id) { if (!S.existing.has(id)) S.selected.delete(id); });
 	S.auto.clear();
@@ -122,13 +122,7 @@ function autoSelect(threshold) {
 		if (!S.blacklist.has(r.id) && !S.existing.has(r.id) && r.conf > 0 && (threshold == null || r.conf >= threshold)) cands.push(r);
 	});
 	cands.sort(function (a, b) { return b.conf - a.conf; });
-	var internal = cands.filter(function (r) { return r.type === 'internal'; });
-	var external = cands.filter(function (r) { return r.type === 'external'; });
-	var picked = new Set();
-	internal.slice(0, Math.ceil(room * 0.7)).forEach(function (r) { picked.add(r); });
-	external.slice(0, Math.floor(room * 0.3)).forEach(function (r) { picked.add(r); });
-	for (var i = 0; i < cands.length && picked.size < room; i++) picked.add(cands[i]);
-	picked.forEach(function (r) { S.selected.add(r.id); S.auto.add(r.id); });
+	cands.slice(0, room).forEach(function (r) { S.selected.add(r.id); S.auto.add(r.id); });
 	refresh();
 }
 
@@ -358,7 +352,7 @@ async function onRetry() {
 	try {
 		var router = getRouter();
 		if (!router) throw new Error('PaperRouter not found');
-		var fresh = await router.SortCollectionsByItemName(S.itemName, new Set(S.blacklist));
+		var fresh = await router.SortCollectionsByItemName(S.itemName, new Set(S.blacklist), S.args.itemAbstract || '', S.args.itemExtra || null);
 		await build(fresh);
 	} catch (e) {
 		root.textContent = '';

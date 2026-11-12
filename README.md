@@ -4,8 +4,8 @@
 
 A Zotero plugin that suggests which collections a paper belongs to.
 
-[![Stars](https://img.shields.io/github/stars/KESHEN-ZHOU/PaperRouter?style=flat-square)](https://github.com/KESHEN-ZHOU/PaperRouter/stargazers)
-[![Version](https://img.shields.io/github/v/tag/KESHEN-ZHOU/PaperRouter?label=version&style=flat-square)](https://github.com/KESHEN-ZHOU/PaperRouter/releases)
+[![Stars](https://img.shields.io/github/stars/noahweidig/PaperRouter?style=flat-square)](https://github.com/noahweidig/PaperRouter/stargazers)
+[![Version](https://img.shields.io/github/v/tag/noahweidig/PaperRouter?label=version&style=flat-square)](https://github.com/noahweidig/PaperRouter/releases)
 [![License](https://img.shields.io/badge/license-MPL--2.0-blue.svg?style=flat-square)](./LICENSE)
 
 [English](./README.md) · [简体中文](./README.zh-CN.md)
@@ -45,10 +45,11 @@ Works on Zotero 7, 8, 9, and 10.0.x.
 
 ## Features
 
-- Two ranking modes: embedding cosine similarity, or LLM zero-shot classification.
+- Three ranking modes: offline (default, no API key, learns from papers already in your collections), embedding cosine similarity, or LLM zero-shot classification.
 - Per-collection confidence score shown in the dialog.
 - Feedback-aware: rejected collections are blacklisted and down-ranked next time.
 - Hierarchy-aware: doesn't suggest a child collection when the parent is already a strong match.
+- Batch mode: select many papers, review top suggestions per paper in one window, file them all at once (adds only).
 - Keyword filter inside the dialog.
 - Configurable cap (default 4 collections per item) and a confidence-threshold slider.
 - Background embedding refresh on startup so the dialog opens fast.

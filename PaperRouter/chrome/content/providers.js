@@ -184,7 +184,7 @@ var TidyUpProviders = (function() {
             'Authorization': 'Bearer ' + config.apiKey
         };
         if (config.provider === 'openrouter') {
-            headers['HTTP-Referer'] = 'https://github.com/KESHEN-ZHOU/PaperRouter';
+            headers['HTTP-Referer'] = 'https://github.com/noahweidig/PaperRouter';
         }
         return { url: baseUrl + '/chat/completions', headers: headers, body: body };
     }

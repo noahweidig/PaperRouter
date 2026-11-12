@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.5.0 — 2026-11-12
+
+### Added
+
+- **Offline ranking that learns from your library (no API key).** Each collection is profiled from the titles, abstracts, tags and venues of the papers already filed in it. A new paper is scored by TF-IDF similarity to those profiles, by its nearest already-filed neighbours, and by collection-name match. This replaces the old letter-count comparison against the collection name.
+- Word-based matching with stopwords and light stemming; Chinese text is matched on character pairs.
+- The new paper's tags, abstract and venue are used, not just its title. Its own entry is excluded when you re-classify an already-filed paper.
+- The index is cached, refreshed automatically when items, tags or collections change, and warmed up shortly after startup.
+
+- **Batch mode.** Select several papers and click the button: one window lists every paper with its top 5 suggestions as toggle chips (best match pre-selected). Filing happens in one transaction and only adds, never removes, memberships. Ranking 100 papers against 300 collections takes about 0.3 s in a mock test. Rejected auto-picks still feed the per-item blacklist.
+
+### Changed
+
+- Initial selection is now simply the highest-confidence collections. The internal/external quota that could pick weaker matches is gone (the labels still show).
+- The startup notification only appears when an embedding API is configured.
+- Embedding and LLM modes are unchanged. If the local ranker fails, the old similarity is used as a fallback.
+
+## 0.4.0 — 2026-11-12
+
+### Changed
+
+- New toolbar icon (folder with an arrow) drawn in the Zotero 20px outline style; uses Zotero's secondary icon color, so it matches the neighbouring buttons in light and dark mode.
+
+### Fixed
+
+- Startup error "can't access property indexOf, baseUrl is null" when an embedding provider and key were set but the base URL was empty. OpenAI and Ollama now fall back to their default URL; other providers get a clear "base URL is not set" message.
+
 ## 0.3.0 — 2026-11-12
 
 ### Changed
