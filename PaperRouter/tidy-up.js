@@ -586,25 +586,9 @@ Output strictly in the above format with no additional content.`;
 			return null;
 		}
 		
-		// Show message to user (non-blocking)
-		try {
-			Zotero.debug(`Calling LLM API with algorithm: ${algorithm}, provider: ${this.llmConfig.provider}`);
-			const popMsg = new Zotero.ProgressWindow({ closeOnClick: true });
-			popMsg.changeHeadline('PaperRouter', '', ` Calling LLM API (${algorithm}, ${this.llmConfig.provider})`);
-			
-			const prog = new popMsg.ItemProgress(
-				'chrome://zotero/skin/spinner-16px.png',
-				`API Calling...`
-			);
-			prog.setProgress(50);
-			
-			popMsg.show();
-			popMsg.startCloseTimer(2000);
-		} catch (e) {
-			// Ignore notification errors, continue
-			this.log(`Error showing notification: ${e.message}`);
-		}
-		
+		Zotero.debug(`Calling LLM API with algorithm: ${algorithm}, provider: ${this.llmConfig.provider}`);
+		this._llmPopStart(algorithm);
+
 		try {
 			const cfg = Object.assign({}, this.llmConfig); // shallow copy
 			let response;
@@ -632,7 +616,49 @@ Output strictly in the above format with no additional content.`;
 		} catch (e) {
 			this.log(`Error calling LLM API: ${e.message}`);
 			throw e;
+		} finally {
+			this._llmPopEnd();
 		}
+	},
+
+	// Single shared progress popup for concurrent LLM calls
+	_llmPopStart(algorithm) {
+		try {
+			this._llmActive = (this._llmActive || 0) + 1;
+			this._llmDone = this._llmDone || 0;
+			if (!this._llmPop) {
+				const pop = new Zotero.ProgressWindow({ closeOnClick: true });
+				pop.changeHeadline('PaperRouter', '', ' Calling LLM API');
+				this._llmPopItem = new pop.ItemProgress('chrome://zotero/skin/spinner-16px.png', '');
+				pop.show();
+				this._llmPop = pop;
+			}
+			this._llmPopRefresh();
+		} catch (e) {
+			this.log(`Error showing notification: ${e.message}`);
+		}
+	},
+
+	_llmPopRefresh() {
+		if (!this._llmPopItem) return;
+		const total = this._llmDone + this._llmActive;
+		this._llmPopItem.setText(`${this._llmDone}/${total} done`);
+		this._llmPopItem.setProgress(Math.round(this._llmDone / total * 100));
+	},
+
+	_llmPopEnd() {
+		try {
+			this._llmActive = Math.max(0, (this._llmActive || 1) - 1);
+			this._llmDone = (this._llmDone || 0) + 1;
+			this._llmPopRefresh();
+			if (this._llmActive === 0 && this._llmPop) {
+				const pop = this._llmPop;
+				this._llmPop = null;
+				this._llmPopItem = null;
+				this._llmDone = 0;
+				pop.startCloseTimer(1000);
+			}
+		} catch (e) {}
 	},
 
 	// Shared executor: request shape comes from TidyUpProviders, response/error parsed via shared helpers.
@@ -4140,19 +4166,19 @@ Output strictly in the above format with no additional content.`;
 		// Create progress container (vbox not dialog)
 		let dialog = doc.createXULElement('vbox');
 		dialog.id = 'tidy-up-progress-dialog';
-		dialog.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border: 2px solid #ccc; border-radius: 8px; padding: 20px; z-index: 9999; min-width: 300px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);';
+		dialog.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: Canvas; color: CanvasText; border: 2px solid GrayText; border-radius: 8px; padding: 20px; z-index: 9999; min-width: 300px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);';
 		
 		// Title
 		let titleLabel = doc.createXULElement('label');
 		titleLabel.setAttribute('value', title);
-		titleLabel.style.cssText = 'font-weight: bold; font-size: 16px; margin-bottom: 10px;';
+		titleLabel.style.cssText = 'font-weight: bold; font-size: 16px; margin-bottom: 10px; color: CanvasText;';
 		dialog.appendChild(titleLabel);
 		
 		// Message
 		let label = doc.createXULElement('label');
 		label.id = 'tidy-up-progress-label';
 		label.setAttribute('value', message);
-		label.style.fontSize = '14px';
+		label.style.cssText = 'font-size: 14px; color: CanvasText;';
 		dialog.appendChild(label);
 		
 		// Progress bar
