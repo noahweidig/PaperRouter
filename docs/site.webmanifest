@@ -1,0 +1,32 @@
+{
+  "name": "PaperRouter",
+  "short_name": "PaperRouter",
+  "description": "Rank the Zotero collections each paper belongs to, offline or with an LLM.",
+  "start_url": "./",
+  "display": "standalone",
+  "theme_color": "#1B8AA5",
+  "background_color": "#ffffff",
+  "icons": [
+    {
+      "src": "android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

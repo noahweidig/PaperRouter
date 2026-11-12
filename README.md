@@ -8,7 +8,7 @@ A Zotero plugin that suggests which collections a paper belongs to.
 [![Version](https://img.shields.io/github/v/tag/noahweidig/PaperRouter?label=version&style=flat-square)](https://github.com/noahweidig/PaperRouter/releases)
 [![License](https://img.shields.io/badge/license-MPL--2.0-blue.svg?style=flat-square)](./LICENSE)
 
-[English](./README.md) · [简体中文](./README.zh-CN.md)
+[English](./README.md) · [简体中文](./README.zh-CN.md) · [Documentation](https://noahweidig.com/PaperRouter/)
 
 <table>
   <tr>
