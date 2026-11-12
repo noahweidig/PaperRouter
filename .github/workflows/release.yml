@@ -2,6 +2,7 @@ name: release
 
 on:
   push:
+    branches: [main]
     tags: ['v*']
   workflow_dispatch:
     inputs:
@@ -21,11 +22,15 @@ jobs:
         id: tag
         env:
           INPUT_TAG: ${{ inputs.tag }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           TAG="$INPUT_TAG"
           [ -n "$TAG" ] || { [ "${GITHUB_REF_TYPE}" = "tag" ] && TAG="${GITHUB_REF_NAME}"; } || true
-          case "$TAG" in ''|v[0-9]*.[0-9]*.[0-9]*) ;; *) echo "invalid tag: $TAG"; exit 1 ;; esac
           V=$(grep '"version"' PaperRouter/manifest.json | head -1 | sed -E 's/.*"([0-9.]+)".*/\1/')
+          if [ -z "$TAG" ] && [ "${GITHUB_REF}" = "refs/heads/main" ]; then
+            if gh release view "v$V" >/dev/null 2>&1; then echo "v$V already released"; else TAG="v$V"; fi
+          fi
+          case "$TAG" in ''|v[0-9]*.[0-9]*.[0-9]*) ;; *) echo "invalid tag: $TAG"; exit 1 ;; esac
           if [ -n "$TAG" ] && [ "v$V" != "$TAG" ]; then echo "tag $TAG != manifest v$V"; exit 1; fi
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=$V" >> "$GITHUB_OUTPUT"

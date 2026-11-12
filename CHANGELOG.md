@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.1 — 2026-11-12
+
+### Fixed
+
+- The "Ranking…" popup was unreadable in dark mode (white text on white). It now follows the theme.
+- Batch LLM calls opened one popup each and stacked off-screen. They now share one popup showing done/total.
+
 ## 0.6.0 — 2026-11-12
 
 ### Added
