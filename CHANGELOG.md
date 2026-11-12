@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.2 — 2026-11-12
+
+### Changed
+
+- New add-on icon (folder with arrow on a teal tile). The old one was a dark outline that vanished on dark backgrounds in the Plugins Manager.
+
 ## 0.6.1 — 2026-11-12
 
 ### Fixed

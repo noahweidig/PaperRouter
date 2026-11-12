@@ -3,6 +3,16 @@
     "paperrouter@keshen-zhou.github.io": {
       "updates": [
         {
+          "version": "0.6.2",
+          "update_link": "https://github.com/noahweidig/PaperRouter/releases/download/v0.6.2/paperrouter-0.6.2.xpi",
+          "applications": {
+            "zotero": {
+              "strict_min_version": "7.0",
+              "strict_max_version": "10.0.*"
+            }
+          }
+        },
+        {
           "version": "0.6.1",
           "update_link": "https://github.com/noahweidig/PaperRouter/releases/download/v0.6.1/paperrouter-0.6.1.xpi",
           "applications": {
