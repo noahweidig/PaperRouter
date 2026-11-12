@@ -1,0 +1,20 @@
+PaperRouter
+Copyright (c) Mike Zhou (Keshen Zhou) and Wight
+2026 rewrite and later changes: Noah Weidig
+
+PaperRouter is licensed under the Mozilla Public License 2.0 (see LICENSE).
+
+It is based on the Tidy Up Zotero plugin by Mike Zhou (Keshen Zhou) and Wight,
+which is also MPL-2.0. The original copyright notices are kept in the source
+file headers under PaperRouter/.
+
+Third-party material included in this repository:
+
+- Zotero "folder" icon (AGPL-3.0)
+  https://github.com/zotero/zotero
+  Used for the add-on icon (PaperRouter/icons/) and the documentation
+  favicons and social card (docs/).
+
+- Lucide icons (ISC)
+  https://lucide.dev
+  Used by the documentation site only (docs/). Not part of the add-on.
