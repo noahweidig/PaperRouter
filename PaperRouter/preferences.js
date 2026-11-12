@@ -96,6 +96,8 @@ var TidyUpPrefs = {
         set('l10n-max-collections-unit', 'prefs-max-collections-unit');
         set('l10n-min-confidence', 'prefs-min-confidence');
         set('l10n-min-confidence-hint', 'prefs-min-confidence-hint');
+        set('l10n-excluded', 'prefs-excluded');
+        set('l10n-excluded-hint', 'prefs-excluded-hint');
         var langSelect = document.getElementById('language-select');
         if (langSelect && langSelect.menupopup) {
             var items = langSelect.menupopup.querySelectorAll('menuitem');
@@ -697,6 +699,26 @@ var TidyUpPrefs = {
         }
     },
 
+    saveExcluded: function() {
+        try {
+            var v = document.getElementById('excluded-collections').value.trim();
+            Zotero.Prefs.set('extensions.tidy-up.excludedCollections', v, true);
+            var router = this.getRuntimeRouter();
+            if (router && router.markLocalRankDirty) router.markLocalRankDirty();
+        } catch (e) {
+            this.log('Error saving excluded collections: ' + e.message);
+        }
+    },
+
+    loadExcluded: function() {
+        try {
+            var v = Zotero.Prefs.get('extensions.tidy-up.excludedCollections', true);
+            document.getElementById('excluded-collections').value = (v === null || v === undefined) ? 'inbox' : v;
+        } catch (e) {
+            this.log('Error loading excluded collections: ' + e.message);
+        }
+    },
+
     loadMinConfidence: function() {
         try {
             var v = parseInt(Zotero.Prefs.get('extensions.tidy-up.minConfidence', true), 10) || 0;
@@ -1052,6 +1074,7 @@ var TidyUpPrefs = {
             
             this.loadMaxCollectionNum();
             this.loadMinConfidence();
+            this.loadExcluded();
             
             this.loadLlmConfig();
 
@@ -1106,6 +1129,10 @@ var TidyUpPrefs = {
                 testModeMockApi.addEventListener('command', function() { 
                     self.saveTestMode(); 
                 });
+            }
+            var exclInput = document.getElementById('excluded-collections');
+            if (exclInput) {
+                exclInput.addEventListener('change', function() { self.saveExcluded(); });
             }
             var minConfInput = document.getElementById('min-confidence');
             if (minConfInput) {

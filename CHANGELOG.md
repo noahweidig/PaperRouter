@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.1 — 2026-11-12
+
+### Fixed
+
+- **Inbox collections swallowed every suggestion.** A catch-all collection (e.g. "AI Inbox") holds a large share of the library, so it won the nearest-neighbour vote for almost any paper and scored 100%. Two changes:
+  - New setting "Ignore collections" (default `inbox`): collections whose name contains any listed word are never suggested, and papers filed only there are not used as evidence.
+  - Scores are damped for collections far larger than the typical one, so size alone no longer wins.
+
 ## 0.5.0 — 2026-11-12
 
 ### Added

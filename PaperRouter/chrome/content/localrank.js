@@ -125,6 +125,12 @@ var PaperRouterLocalRank = (function () {
 			});
 		});
 
+		// Typical collection size: very large collections (catch-alls) are damped in score().
+		var counts = [];
+		idx.colls.forEach(function (c) { if (c.count > 0) counts.push(c.count); });
+		counts.sort(function (a, b) { return a - b; });
+		idx.medianCount = counts.length ? counts[Math.floor(counts.length / 2)] : 1;
+
 		idx.colls.forEach(function (c) {
 			c.norm = profileNorm(c.sum, idx.idf);
 			var nt = termWeights([{ text: c.name, weight: 1 }]);
@@ -219,6 +225,9 @@ var PaperRouterLocalRank = (function () {
 			}
 			// A collection with no filed items can only be judged by its name.
 			var s = c.count > 0 ? 0.45 * P + 0.40 * K + 0.30 * Nm : 0.60 * Nm;
+			// A collection holding far more papers than usual matches almost anything and wins the
+			// neighbour vote just by being big, so damp it by how oversized it is.
+			if (c.count > 0) s /= 1 + 0.5 * Math.log(1 + c.count / idx.medianCount);
 			out.set(cid, Math.max(0, Math.min(1, s)));
 		});
 		return out;

@@ -7,6 +7,7 @@
 pref("extensions.tidy-up.intensity", 100);
 pref("extensions.tidy-up.language", "auto");
 pref("extensions.tidy-up.minConfidence", 0);
+pref("extensions.tidy-up.excludedCollections", "inbox");
 
 pref("extensions.tidy-up.embedding.provider", "");
 pref("extensions.tidy-up.embedding.apiKey", "");
