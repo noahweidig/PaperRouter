@@ -45,7 +45,7 @@ Works on Zotero 7, 8, 9, and 10.0.x.
 
 ## Features
 
-- Two ranking modes: embedding cosine similarity, or LLM zero-shot classification.
+- Three ranking modes: offline (default, no API key, learns from papers already in your collections), embedding cosine similarity, or LLM zero-shot classification.
 - Per-collection confidence score shown in the dialog.
 - Feedback-aware: rejected collections are blacklisted and down-ranked next time.
 - Hierarchy-aware: doesn't suggest a child collection when the parent is already a strong match.

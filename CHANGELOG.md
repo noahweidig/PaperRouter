@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.5.0 — 2026-11-12
+
+### Added
+
+- **Offline ranking that learns from your library (no API key).** Each collection is profiled from the titles, abstracts, tags and venues of the papers already filed in it. A new paper is scored by TF-IDF similarity to those profiles, by its nearest already-filed neighbours, and by collection-name match. This replaces the old letter-count comparison against the collection name.
+- Word-based matching with stopwords and light stemming; Chinese text is matched on character pairs.
+- The new paper's tags, abstract and venue are used, not just its title. Its own entry is excluded when you re-classify an already-filed paper.
+- The index is cached, refreshed automatically when items, tags or collections change, and warmed up shortly after startup.
+
+### Changed
+
+- Initial selection is now simply the highest-confidence collections. The internal/external quota that could pick weaker matches is gone (the labels still show).
+- The startup notification only appears when an embedding API is configured.
+- Embedding and LLM modes are unchanged. If the local ranker fails, the old similarity is used as a fallback.
+
 ## 0.4.0 — 2026-11-12
 
 ### Changed

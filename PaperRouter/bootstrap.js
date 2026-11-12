@@ -69,6 +69,7 @@ async function startup({ id, version, rootURI }) {
 
 	Services.scriptloader.loadSubScript(rootURI + 'chrome/content/l10n.js');
 	Services.scriptloader.loadSubScript(rootURI + 'chrome/content/providers.js');
+	Services.scriptloader.loadSubScript(rootURI + 'chrome/content/localrank.js');
 	Services.scriptloader.loadSubScript(rootURI + 'tidy-up.js');
 	PaperRouter = PaperRouter || TidyUp;
 	TidyUp = TidyUp || PaperRouter;

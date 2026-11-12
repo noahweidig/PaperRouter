@@ -1753,6 +1753,18 @@ Output strictly in the above format with no additional content.`;
 		
 		// Load LLM API config from preferences
 		this.loadLlmConfig();
+
+		// Keep the local ranking index fresh, and warm it up so the first dialog opens fast
+		try {
+			this._localRankNotifierID = Zotero.Notifier.registerObserver(
+				{ notify: () => this.markLocalRankDirty() },
+				['collection-item', 'item', 'item-tag', 'tag', 'collection'],
+				'paperrouter-localrank'
+			);
+		} catch (e) {
+			this.log(`Local rank observer failed: ${e.message}`);
+		}
+		setTimeout(() => { this.getLocalRankIndex().catch(e => this.log(`Local rank warm-up failed: ${e.message}`)); }, 6000);
 		
 		// Init Collection type cache
 		await this.collectionTypeCache.init(rootURI);
@@ -2034,9 +2046,12 @@ Output strictly in the above format with no additional content.`;
 		this.registerContextMenu();
 		
 		// Show load success notification (delayed for stats)
-		setTimeout(() => {
-			this.showLoadSuccessNotification();
-		}, 3500);
+		// Only worth showing when an embedding API is configured; offline mode has no stats to report.
+		if (this.embeddingConfig.provider && this.embeddingConfig.apiKey) {
+			setTimeout(() => {
+				this.showLoadSuccessNotification();
+			}, 3500);
+		}
 	},
 	
 	// Show load success notification (with stats)
@@ -2434,6 +2449,12 @@ Output strictly in the above format with no additional content.`;
 
 	// Remove plugin UI from all windows
 	removeFromAllWindows() {
+		try {
+			if (this._localRankNotifierID) {
+				Zotero.Notifier.unregisterObserver(this._localRankNotifierID);
+				this._localRankNotifierID = null;
+			}
+		} catch (e) {}
 		var windows = Zotero.getMainWindows();
 		for (let win of windows) {
 			if (!win.ZoteroPane) continue;
@@ -2516,6 +2537,103 @@ Output strictly in the above format with no additional content.`;
 		}
 		
 		return node;
+	},
+
+	// ---- Local ranking (no API key): learns from items already filed in each collection ----
+	_localRank: { idx: null, dirty: true, building: null },
+
+	markLocalRankDirty() {
+		this._localRank.dirty = true;
+	},
+
+	async loadLocalRankData() {
+		const q = (sql) => Zotero.DB.queryAsync(sql);
+		const colRows = await q("SELECT collectionID AS cid, collectionName AS name FROM collections " +
+			"WHERE collectionID NOT IN (SELECT collectionID FROM deletedCollections)");
+		const memRows = await q("SELECT ci.collectionID AS cid, ci.itemID AS iid FROM collectionItems ci " +
+			"JOIN items i ON i.itemID = ci.itemID JOIN itemTypes t ON t.itemTypeID = i.itemTypeID " +
+			"WHERE t.typeName NOT IN ('attachment', 'note', 'annotation') " +
+			"AND ci.itemID NOT IN (SELECT itemID FROM deletedItems)");
+		const fieldRows = await q("SELECT d.itemID AS iid, f.fieldName AS field, v.value AS value FROM itemData d " +
+			"JOIN fields f ON f.fieldID = d.fieldID JOIN itemDataValues v ON v.valueID = d.valueID " +
+			"WHERE f.fieldName IN ('title', 'abstractNote', 'publicationTitle') " +
+			"AND d.itemID IN (SELECT itemID FROM collectionItems)");
+		const tagRows = await q("SELECT it.itemID AS iid, t.name AS name FROM itemTags it " +
+			"JOIN tags t ON t.tagID = it.tagID WHERE it.itemID IN (SELECT itemID FROM collectionItems)");
+
+		const items = new Map();
+		for (const r of memRows || []) {
+			let it = items.get(r.iid);
+			if (!it) { it = { id: r.iid, title: '', abstract: '', venue: '', tags: [], collectionIds: [] }; items.set(r.iid, it); }
+			it.collectionIds.push(r.cid);
+		}
+		for (const r of fieldRows || []) {
+			const it = items.get(r.iid);
+			if (!it) continue;
+			if (r.field === 'title') it.title = r.value;
+			else if (r.field === 'abstractNote') it.abstract = r.value;
+			else if (r.field === 'publicationTitle') it.venue = r.value;
+		}
+		for (const r of tagRows || []) {
+			const it = items.get(r.iid);
+			if (it) it.tags.push(r.name);
+		}
+		return { collections: (colRows || []).map(r => ({ id: r.cid, name: r.name })), items: Array.from(items.values()) };
+	},
+
+	// Cached index; rebuilt lazily after any collection/item/tag change.
+	async getLocalRankIndex() {
+		const st = this._localRank;
+		if (st.idx && !st.dirty) return st.idx;
+		if (st.building) return st.building;
+		st.building = (async () => {
+			try {
+				st.dirty = false;  // events during the build set it again
+				const t0 = Date.now();
+				const data = await this.loadLocalRankData();
+				st.idx = PaperRouterLocalRank.buildIndex(data);
+				this.log(`[TIMING] local rank index: ${data.items.length} items, ${data.collections.length} collections, ${(Date.now() - t0).toFixed(0)}ms`);
+				return st.idx;
+			} catch (e) {
+				st.dirty = true;
+				throw e;
+			} finally {
+				st.building = null;
+			}
+		})();
+		return st.building;
+	},
+
+	async calculateTreeLocalRank(trees, itemName, blacklist, itemAbstract, extra) {
+		const idx = await this.getLocalRankIndex();
+		const scores = PaperRouterLocalRank.score(idx, {
+			title: itemName,
+			abstract: itemAbstract || '',
+			tags: (extra && extra.tags) || [],
+			venue: (extra && extra.venue) || ''
+		}, extra && extra.excludeItemId != null ? extra.excludeItemId : null);
+		const walk = (nodes) => {
+			for (const node of nodes) {
+				if (blacklist.has(node.id)) {
+					node.confidence = 0;
+				} else {
+					const raw = scores.get(node.id) || 0;
+					node.confidence = this.collectionBlacklist.applyRejectionPenalty(node.id, raw);
+				}
+				if (node.children && node.children.length) walk(node.children);
+			}
+		};
+		walk(trees);
+	},
+
+	// Local ranking with the old letter-count similarity as a safety net.
+	async calculateTreeLocal(trees, itemName, blacklist, itemAbstract, extra) {
+		try {
+			await this.calculateTreeLocalRank(trees, itemName, blacklist, itemAbstract, extra);
+		} catch (e) {
+			this.log(`Local rank failed (${e.message}), using legacy similarity`);
+			await this.calculateTreeSimilarity(trees, itemName, blacklist);
+		}
 	},
 
 	// Compute similarity for tree Collections
@@ -2628,7 +2746,7 @@ Output strictly in the above format with no additional content.`;
 
 	// Sort Collections by semantic similarity to Item name (tree structure)
 	// v2.6.2: use cache directly, no longer update on click
-	async SortCollectionsByItemName(itemName, blacklist = new Set(), itemAbstract = '') {
+	async SortCollectionsByItemName(itemName, blacklist = new Set(), itemAbstract = '', extra = null) {
 		const t0 = Date.now();
 		this.log(`SortCollectionsByItemName: Starting with item name "${itemName}", blacklist size: ${blacklist.size}`);
 		
@@ -2676,7 +2794,7 @@ Output strictly in the above format with no additional content.`;
 				// Zero-shot failed, fallback to similarity
 				this.log('Zero-shot classification failed, falling back to similarity calculation');
 				t1 = Date.now();
-				await this.calculateTreeSimilarity(trees, itemName, blacklist);
+				await this.calculateTreeLocal(trees, itemName, blacklist, itemAbstract, extra);
 				this.log(`[TIMING] calculateTreeSimilarity: ${(Date.now() - t1).toFixed(0)}ms`);
 			}
 		} else {
@@ -2692,12 +2810,12 @@ Output strictly in the above format with no additional content.`;
 			} else if (hasEmbeddingConfig) {
 				this.log('Embedding API configured but cache is empty, using local cosine similarity');
 				// Cache empty, use local cosine similarity
-				await this.calculateTreeSimilarity(trees, itemName, blacklist);
+				await this.calculateTreeLocal(trees, itemName, blacklist, itemAbstract, extra);
 				this.log(`[TIMING] calculateTreeSimilarity: ${(Date.now() - t1).toFixed(0)}ms`);
 			} else {
 				this.log('Using local cosine similarity');
 				// Use local cosine similarity
-				await this.calculateTreeSimilarity(trees, itemName, blacklist);
+				await this.calculateTreeLocal(trees, itemName, blacklist, itemAbstract, extra);
 				this.log(`[TIMING] calculateTreeSimilarity: ${(Date.now() - t1).toFixed(0)}ms`);
 			}
 		}
@@ -3142,7 +3260,14 @@ Output strictly in the above format with no additional content.`;
 		try {
 			const tBeforeSort = Date.now();
 			this.log('showSimpleDialog: Calling SortCollectionsByItemName...');
-			collectionData = await this.SortCollectionsByItemName(selectedItemName, itemBlacklist, selectedItemAbstract);
+			var itemExtra = { tags: [], venue: '', excludeItemId: itemId };
+			try {
+				if (selectedItem) {
+					itemExtra.tags = (selectedItem.getTags() || []).map(t => t.tag);
+					itemExtra.venue = selectedItem.getField('publicationTitle') || '';
+				}
+			} catch (e) {}
+			collectionData = await this.SortCollectionsByItemName(selectedItemName, itemBlacklist, selectedItemAbstract, itemExtra);
 			this.log(`[TIMING] SortCollectionsByItemName: ${(Date.now() - tBeforeSort).toFixed(0)}ms`);
 			this.log(`showSimpleDialog: Got ${collectionData.length} root collections`);
 		} catch (e) {
@@ -3159,6 +3284,8 @@ Output strictly in the above format with no additional content.`;
 				selectedCollections: null,
 				sendToCollections: false,
 				itemName: selectedItemName,
+				itemAbstract: selectedItemAbstract,
+				itemExtra: itemExtra,
 				itemId: itemId,
 				blacklist: Array.from(itemBlacklist),
 				existingCollections: existingCollectionIds,  // Collection IDs Item belongs to
