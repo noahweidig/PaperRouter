@@ -1,5 +1,5 @@
 /*
- * Regenerate the docs favicon set from the icon artwork (Lucide folder-down, ISC). Needs Playwright and Python 3 (ICO packing). Run from the repo root:
+ * Regenerate the docs favicon set from the icon artwork (Zotero folder, AGPL-3.0). Needs Playwright and Python 3 (ICO packing). Run from the repo root:
  *   node scripts/make-favicons.js
  * Writes docs/favicon.svg, favicon.ico, PNGs, apple-touch-icon.png, android-chrome and
  * maskable icons, mstile, safari-pinned-tab.svg, site.webmanifest and browserconfig.xml.
@@ -11,8 +11,8 @@ const { chromium } = require('playwright');
 
 const out = path.join(__dirname, '..', 'docs');
 const BLUE = '#1B8AA5';
-// Lucide "folder-down" (ISC), drawn white on a brand-colour tile
-const GLYPH = `<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/><path d="M12 10v6"/><path d="m15 13-3 3-3-3"/>`;
+// Zotero "folder" icon (AGPL-3.0, zotero/zotero), white on a gradient tile
+const GLYPH = `<path fill-rule="evenodd" d="M15 3H9L8.276 1.553C8.107 1.214 7.761 1 7.382 1H3.618C3.239 1 2.893 1.214 2.724 1.553L2 3H1C0.448 3 0 3.448 0 4V6V14C0 14.552 0.448 15 1 15H15C15.552 15 16 14.552 16 14V6V4C16 3.448 15.552 3 15 3ZM15 14H1V6H15V14ZM1 5V4H2C2.379 4 2.725 3.786 2.894 3.447L3.618 2H7.382L8.106 3.447C8.275 3.786 8.621 4 9 4H15V5H1Z"/>`;
 
 // A tile: rounded or full-bleed square, white glyph scaled to `scale`
 const tile = ({ radius, scale, size = 24 }) => {
@@ -20,7 +20,7 @@ const tile = ({ radius, scale, size = 24 }) => {
 	return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none">`
 		+ `<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1FA6B8"/><stop offset="1" stop-color="#0B5F8A"/></linearGradient></defs>`
 		+ `<rect width="24" height="24" rx="${radius}" fill="url(#g)"/>`
-		+ `<g transform="translate(${offset} ${offset}) scale(${scale})" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${GLYPH}</g></svg>\n`;
+		+ `<g transform="translate(${offset} ${offset}) scale(${scale})" fill="#FFFFFF"><g transform="scale(1.5)">${GLYPH}</g></g></svg>\n`;
 };
 
 const write = (name, data) => fs.writeFileSync(path.join(out, name), data);
@@ -28,7 +28,7 @@ const write = (name, data) => fs.writeFileSync(path.join(out, name), data);
 (async () => {
 	write('favicon.svg', tile({ radius: 5, scale: 0.65 }));
 	// Single-colour mask for Safari pinned tabs
-	write('safari-pinned-tab.svg', `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${GLYPH}</svg>\n`);
+	write('safari-pinned-tab.svg', `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="#000">${GLYPH}</svg>\n`);
 
 	// name, pixel size, tile options, transparent corners
 	const pngs = [

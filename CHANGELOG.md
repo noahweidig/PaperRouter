@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.3 — 2026-11-12
+
+### Changed
+
+- Add-on icon redrawn to match ZotPDF and AutoTag: the Zotero folder glyph in white on a rounded teal gradient tile. The docs favicons and social card use the same artwork.
+
 ## 0.6.2 — 2026-11-12
 
 ### Changed
