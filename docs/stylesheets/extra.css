@@ -1,0 +1,77 @@
+/* Landing-page hero; everything else uses Zensical's defaults. */
+.pr-hero {
+  text-align: center;
+  padding: 3.5rem 1rem 2.5rem;
+  margin: -0.5rem -0.8rem 2rem;
+}
+.pr-hero__badge {
+  display: inline-grid;
+  place-items: center;
+  width: 5.5rem;
+  height: 5.5rem;
+  margin-bottom: 0.6rem;
+  border-radius: 1.2rem;
+  color: var(--md-primary-bg-color);
+  background: var(--md-primary-fg-color);
+  box-shadow: 0 0.6rem 1.6rem color-mix(in srgb, var(--md-primary-fg-color) 38%, transparent);
+}
+.pr-hero__badge .twemoji { display: grid; place-items: center; width: auto; height: auto; }
+.pr-hero__badge .twemoji svg { width: 2.8rem; height: 2.8rem; max-height: none; fill: currentColor; }
+.pr-hero h1 {
+  margin: 0.2rem 0 0.6rem;
+  font-size: clamp(2rem, 6vw, 3.4rem);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--md-default-fg-color);
+}
+/* No permalink pilcrow on the big headline */
+.pr-hero h1 .headerlink { display: none; }
+.pr-hero p.pr-hero__lede {
+  max-width: 38rem;
+  margin: 0 auto 1.4rem;
+  font-size: 1.05rem;
+  color: var(--md-default-fg-color--light);
+}
+.pr-hero .md-button { margin: 0.25rem 0.2rem; }
+.pr-hero .md-button .twemoji { margin-inline-end: 0.35rem; }
+.pr-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; justify-content: center; margin: 1.6rem auto 0; max-width: 44rem; }
+.pr-chips span {
+  padding: 0.15rem 0.65rem;
+  font-size: 0.72rem;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 2rem;
+  color: var(--md-default-fg-color--light);
+  background: var(--md-default-bg-color);
+}
+.pr-stats { display: flex; flex-wrap: wrap; justify-content: center; gap: 2rem; margin: 1.8rem 0 0; }
+.pr-stats div { min-width: 6rem; }
+.pr-stats strong { display: block; font-size: 1.7rem; line-height: 1.1; color: var(--md-typeset-a-color); }
+.pr-stats small { color: var(--md-default-fg-color--light); }
+.pr-hero {
+  position: relative;
+  isolation: isolate;
+  --pr-grid: rgb(20 25 40 / 6%);
+  --pr-glow: color-mix(in srgb, var(--md-primary-fg-color) 20%, transparent);
+}
+[data-md-color-scheme="slate"] .pr-hero {
+  --pr-grid: rgb(255 255 255 / 6%);
+  --pr-glow: color-mix(in srgb, var(--md-primary-fg-color) 42%, transparent);
+}
+.pr-hero::before,
+.pr-hero::after {
+  content: "";
+  position: absolute;
+  inset: -4rem 0 0;
+  z-index: -1;
+  pointer-events: none;
+}
+.pr-hero::before {
+  background: radial-gradient(60% 60% at 50% 4rem, var(--pr-glow), transparent 70%);
+}
+.pr-hero::after {
+  background:
+    linear-gradient(var(--pr-grid) 1px, transparent 1px) 0 0 / 64px 64px,
+    linear-gradient(90deg, var(--pr-grid) 1px, transparent 1px) 0 0 / 64px 64px;
+  mask-image: radial-gradient(ellipse 70% 80% at 50% 4rem, black 10%, transparent 75%);
+}
