@@ -2546,6 +2546,31 @@ Output strictly in the above format with no additional content.`;
 		this._localRank.dirty = true;
 	},
 
+	// Collections whose name contains one of these (comma-separated pref) are never suggested,
+	// and their items are not used as evidence. Default: inbox-style catch-alls.
+	getExcludedNames() {
+		let raw = Zotero.Prefs.get('extensions.tidy-up.excludedCollections', true);
+		if (raw === null || raw === undefined) raw = 'inbox';
+		return String(raw).split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+	},
+
+	isExcludedName(name, excluded = this.getExcludedNames()) {
+		const n = String(name || '').toLowerCase();
+		return excluded.some(e => n.includes(e));
+	},
+
+	zeroExcludedCollections(trees) {
+		const excluded = this.getExcludedNames();
+		if (!excluded.length) return;
+		const walk = (nodes) => {
+			for (const node of nodes) {
+				if (this.isExcludedName(node.name, excluded)) node.confidence = 0;
+				if (node.children && node.children.length) walk(node.children);
+			}
+		};
+		walk(trees);
+	},
+
 	async loadLocalRankData() {
 		const q = (sql) => Zotero.DB.queryAsync(sql);
 		const colRows = await q("SELECT collectionID AS cid, collectionName AS name FROM collections " +
@@ -2561,8 +2586,11 @@ Output strictly in the above format with no additional content.`;
 		const tagRows = await q("SELECT it.itemID AS iid, t.name AS name FROM itemTags it " +
 			"JOIN tags t ON t.tagID = it.tagID WHERE it.itemID IN (SELECT itemID FROM collectionItems)");
 
+		const excluded = this.getExcludedNames();
+		const skip = new Set((colRows || []).filter(c => this.isExcludedName(c.name, excluded)).map(c => c.cid));
 		const items = new Map();
 		for (const r of memRows || []) {
+			if (skip.has(r.cid)) continue;   // unsorted/catch-all membership is no evidence of a topic
 			let it = items.get(r.iid);
 			if (!it) { it = { id: r.iid, title: '', abstract: '', venue: '', tags: [], collectionIds: [] }; items.set(r.iid, it); }
 			it.collectionIds.push(r.cid);
@@ -2820,6 +2848,8 @@ Output strictly in the above format with no additional content.`;
 			}
 		}
 		
+		this.zeroExcludedCollections(trees);
+
 		// Sort by similarity
 		let t2 = Date.now();
 		this.sortTreeBySimilarity(trees);

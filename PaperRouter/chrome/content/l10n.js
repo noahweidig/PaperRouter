@@ -111,6 +111,8 @@ var TidyUpL10n = (function() {
             'prefs-max-collections-hint': 'Recommended limit: {count} collections',
             'prefs-min-confidence': 'Default min. confidence:',
             'prefs-min-confidence-hint': '0 = auto (top matches)',
+            'prefs-excluded': 'Ignore collections:',
+            'prefs-excluded-hint': 'Names containing any of these words (comma-separated) are never suggested, e.g. an inbox. Empty = ignore none.',
 
             // Preferences - status messages
             'msg-settings-saved': 'Settings saved',
@@ -267,6 +269,8 @@ var TidyUpL10n = (function() {
             'prefs-max-collections-hint': '推荐时最多选择 {count} 个 Collection',
             'prefs-min-confidence': '默认最低置信度:',
             'prefs-min-confidence-hint': '0 = 自动（取最佳匹配）',
+            'prefs-excluded': '忽略的 Collection:',
+            'prefs-excluded-hint': '名称包含这些词（逗号分隔）的 Collection 不会被推荐，例如收件箱。留空 = 不忽略。',
 
             'msg-settings-saved': '设置已保存',
             'msg-save-failed': '保存失败: {msg}',
@@ -419,6 +423,8 @@ var TidyUpL10n = (function() {
             'prefs-max-collections-hint': '推薦時最多選擇 {count} 個 Collection',
             'prefs-min-confidence': '預設最低置信度:',
             'prefs-min-confidence-hint': '0 = 自動（取最佳匹配）',
+            'prefs-excluded': '忽略的 Collection:',
+            'prefs-excluded-hint': '名稱包含這些詞（逗號分隔）的 Collection 不會被推薦，例如收件匣。留空 = 不忽略。',
 
             'msg-settings-saved': '設定已儲存',
             'msg-save-failed': '儲存失敗: {msg}',

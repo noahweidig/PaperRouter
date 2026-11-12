@@ -140,3 +140,42 @@ describe('batch filing', () => {
     expect(res).toEqual({ added: 2, collections: 2 });
   });
 });
+
+describe('excluded collections', () => {
+  const colRows = [{ cid: 1, name: 'Fuels' }, { cid: 2, name: 'AI Inbox' }];
+  const data = (sql) => {
+    if (/FROM collections/.test(sql)) return colRows;
+    if (/FROM collectionItems ci/.test(sql)) return [{ cid: 1, iid: 10 }, { cid: 2, iid: 10 }, { cid: 2, iid: 11 }];
+    if (/FROM itemData/.test(sql)) return [{ iid: 10, field: 'title', value: 'fuel loads' }, { iid: 11, field: 'title', value: 'unsorted thing' }];
+    return [];
+  };
+
+  test('default pref excludes inbox-style collections by name', () => {
+    const r = loadRouter(data);
+    expect(r.getExcludedNames()).toEqual(['inbox']);
+    expect(r.isExcludedName('AI Inbox')).toBe(true);
+    expect(r.isExcludedName('Fuels')).toBe(false);
+  });
+
+  test('excluded memberships are not used as evidence, items only there are dropped', async () => {
+    const r = loadRouter(data);
+    const d = await r.loadLocalRankData();
+    expect(d.items.map(i => i.id)).toEqual([10]);
+    expect(d.items[0].collectionIds).toEqual([1]);
+  });
+
+  test('zeroExcludedCollections clears their confidence in any mode', () => {
+    const r = loadRouter(data);
+    const trees = [{ id: 2, name: 'AI Inbox', confidence: 1, children: [{ id: 3, name: 'Old inbox 2', confidence: 0.9, children: [] }] }, { id: 1, name: 'Fuels', confidence: 0.5, children: [] }];
+    r.zeroExcludedCollections(trees);
+    expect(trees[0].confidence).toBe(0);
+    expect(trees[0].children[0].confidence).toBe(0);
+    expect(trees[1].confidence).toBe(0.5);
+  });
+
+  test('empty pref ignores nothing', () => {
+    const r = loadRouter(data);
+    r.__zotero.Prefs.get = () => '';
+    expect(r.getExcludedNames()).toEqual([]);
+  });
+});

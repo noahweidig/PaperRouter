@@ -106,3 +106,17 @@ describe('localrank speed', () => {
     expect(per).toBeLessThan(100);
   });
 });
+
+describe('localrank oversized collections', () => {
+  test('a catch-all collection holding most papers does not win by size', () => {
+    const cols = [{ id: 1, name: 'Wildfire' }, { id: 2, name: 'Holding pen' }];
+    const its = [];
+    for (let i = 0; i < 300; i++) its.push({ id: i, title: 'misc paper ' + i + ' fire model data', collectionIds: [2] });
+    its.push({ id: 900, title: 'Wildfire spread model validation', collectionIds: [1] });
+    its.push({ id: 901, title: 'Wildfire behavior and fuel model', collectionIds: [1] });
+    its.push({ id: 902, title: 'Fire spread model for wildfire', collectionIds: [1] });
+    const idx = L.buildIndex({ collections: cols, items: its });
+    const r = rank(idx, { title: 'Wildfire spread model' });
+    expect(r[0]).toBe(1);
+  });
+});
