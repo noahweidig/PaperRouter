@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.0 — 2026-11-12
+
+### Added
+
+- **Inbox triage.** In batch mode, when a selected paper sits in an inbox-style collection (see "Ignore collections"), a "Remove from inbox when filed" option (on by default) takes it out of the inbox once it has been filed somewhere. Inbox memberships no longer count toward the per-paper limit while that option is on.
+- **Undo.** Right-click an item, then "Undo last PaperRouter filing" (shown only when there is something to undo). It reverses both additions and removals, in one transaction, and survives a Zotero restart. Works for batch and single-paper filing.
+- **Why a collection was suggested.** Hover a row or chip to see the words that matched and the most similar papers already filed there.
+- Confidence shown as High / Medium / Low (number kept in the tooltip) instead of a raw percentage, since scores are relative to your library.
+- Outline icons in the dialogs and on the item context menu, in the same style as the toolbar icon; they follow the theme color.
+
 ## 0.5.1 — 2026-11-12
 
 ### Fixed

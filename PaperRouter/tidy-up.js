@@ -2450,6 +2450,11 @@ Output strictly in the above format with no additional content.`;
 	// Remove plugin UI from all windows
 	removeFromAllWindows() {
 		try {
+			const d = Zotero.getMainWindow().document;
+			const u = d.getElementById('tidy-up-undo-menuitem');
+			if (u) u.remove();
+		} catch (e) {}
+		try {
 			if (this._localRankNotifierID) {
 				Zotero.Notifier.unregisterObserver(this._localRankNotifierID);
 				this._localRankNotifierID = null;
@@ -2644,9 +2649,11 @@ Output strictly in the above format with no additional content.`;
 			for (const node of nodes) {
 				if (blacklist.has(node.id)) {
 					node.confidence = 0;
+					node.why = null;
 				} else {
 					const raw = scores.get(node.id) || 0;
 					node.confidence = this.collectionBlacklist.applyRejectionPenalty(node.id, raw);
+					node.why = (scores.why && scores.why.get(node.id)) || null;
 				}
 				if (node.children && node.children.length) walk(node.children);
 			}
@@ -3141,6 +3148,15 @@ Output strictly in the above format with no additional content.`;
 		this.addItemContextMenuFallback();
 	},
 
+	// Themed icon for a menu item (strokes follow the menu text color)
+	applyMenuIcon(menuitem, file = 'icon.svg') {
+		menuitem.setAttribute('class', 'menuitem-iconic');
+		menuitem.setAttribute('image', `${this.rootURI}chrome/content/${file}`);
+		menuitem.style.setProperty('-moz-context-properties', 'fill, fill-opacity, stroke, stroke-opacity');
+		menuitem.style.fill = 'currentColor';
+		menuitem.style.stroke = 'currentColor';
+	},
+
 	// Add context menu item via XUL (Zotero 7/8 compatible)
 	addItemContextMenuFallback() {
 		this.log('Starting fallback context menu addition...');
@@ -3191,6 +3207,23 @@ Output strictly in the above format with no additional content.`;
 		contextMenuitem.id = 'tidy-up-context-menuitem';
 		contextMenuitem.setAttribute('label', (typeof TidyUpL10n !== 'undefined' ? TidyUpL10n.getString('menu-send-to-collections') : 'Send to collections...'));
 
+		this.applyMenuIcon(contextMenuitem);
+
+		// Undo item: only visible when there is something to undo
+		let undoItem = doc.createXULElement('menuitem');
+		undoItem.id = 'tidy-up-undo-menuitem';
+		undoItem.setAttribute('label', (typeof TidyUpL10n !== 'undefined' ? TidyUpL10n.getString('menu-undo-filing') : 'Undo last PaperRouter filing'));
+		undoItem.hidden = true;
+		this.applyMenuIcon(undoItem, 'icon-undo.svg');
+		undoItem.addEventListener('command', async () => {
+			try { await this.undoLastFiling(); } catch (e) { this.log(`Undo failed: ${e.message}`); this.showNotification('PaperRouter', `Undo failed: ${e.message}`, 'error'); }
+		});
+		itemMenu.addEventListener('popupshowing', (ev) => {
+			if (ev.target === itemMenu) undoItem.hidden = !this.getLastFiling();
+		});
+		const oldUndo = doc.getElementById('tidy-up-undo-menuitem');
+		if (oldUndo) oldUndo.remove();
+
 		// Use command event instead of click
 		contextMenuitem.addEventListener('command', async () => {
 			this.log('Context menu item clicked!');
@@ -3230,6 +3263,8 @@ Output strictly in the above format with no additional content.`;
 			this.log('ERROR: Menu item not found in DOM after insertion!');
 		}
 
+		itemMenu.appendChild(undoItem);
+		this.storeAddedElement(undoItem);
 		this.storeAddedElement(separator);
 		this.storeAddedElement(contextMenuitem);
 		this.log('Context menu item added successfully');
@@ -3258,6 +3293,7 @@ Output strictly in the above format with no additional content.`;
 	async rankBatch(items, topN = 5) {
 		const trees = await this.getAllCollectionsTree();
 		const rows = [];
+		const excludedNames = this.getExcludedNames();
 		const origLog = this.log;
 		this.log = () => {};   // per-node logging would dominate the runtime for large batches
 		try {
@@ -3284,14 +3320,17 @@ Output strictly in the above format with no additional content.`;
 				const suggestions = flat.slice(0, topN).map(node => {
 					const path = [];
 					for (let p = node.parent; p; p = p.parent) path.unshift(p.name);
-					return { id: node.id, key: node.key, name: node.name, path, confidence: node.confidence };
+					return { id: node.id, key: node.key, name: node.name, path, confidence: node.confidence, why: node.why || null };
 				});
 				const existing = [];
+				const inbox = [];
 				for (const cid of existingIds) {
 					const c = Zotero.Collections.get(cid);
-					if (c) existing.push({ id: cid, name: c.name });
+					if (!c) continue;
+					existing.push({ id: cid, name: c.name });
+					if (this.isExcludedName(c.name, excludedNames)) inbox.push({ id: cid, name: c.name });
 				}
-				rows.push({ itemId: item.id, title, existing, suggestions });
+				rows.push({ itemId: item.id, title, existing, inbox, suggestions });
 				if (++n % 10 === 0) await new Promise(r => setTimeout(r, 0));   // let the UI breathe
 			}
 		} finally {
@@ -3300,15 +3339,17 @@ Output strictly in the above format with no additional content.`;
 		return rows;
 	},
 
-	// Add items to collections (never removes memberships). assignments: [{itemId, collections:[{id}]}]
+	// Add items to collections; optionally drop inbox memberships (removeFrom) for papers that got filed.
+	// assignments: [{itemId, collections:[{id}], removeFrom?:[collectionId]}]
 	async addItemsToCollections(assignments, itemsById) {
-		let added = 0;
-		const touched = new Set();
+		const added = [];
+		const removed = [];
 		await Zotero.DB.executeTransaction(async () => {
 			for (const a of assignments) {
 				const item = itemsById.get(a.itemId);
 				if (!item) continue;
 				const have = new Set(item.getCollections());
+				let filed = 0;
 				for (const c of a.collections) {
 					const cid = parseInt(c.id, 10);
 					if (have.has(cid)) continue;
@@ -3316,12 +3357,60 @@ Output strictly in the above format with no additional content.`;
 					if (!collection) continue;
 					await collection.addItem(item.id);
 					have.add(cid);
-					touched.add(cid);
-					added++;
+					added.push([item.id, cid]);
+					filed++;
+				}
+				if (filed > 0) {
+					for (const rid of a.removeFrom || []) {
+						if (!have.has(rid)) continue;
+						const collection = await Zotero.Collections.getAsync(rid);
+						if (!collection) continue;
+						await collection.removeItem(item.id);
+						have.delete(rid);
+						removed.push([item.id, rid]);
+					}
 				}
 			}
 		});
-		return { added, collections: touched.size };
+		this.setLastFiling({ added, removed });
+		return { added: added.length, removed: removed.length, collections: new Set(added.map(x => x[1])).size };
+	},
+
+	setLastFiling(entry) {
+		this.lastFiling = (entry && (entry.added.length || entry.removed.length)) ? { time: Date.now(), added: entry.added, removed: entry.removed } : null;
+		try {
+			const json = this.lastFiling && (this.lastFiling.added.length + this.lastFiling.removed.length) < 5000 ? JSON.stringify(this.lastFiling) : '';
+			Zotero.Prefs.set('extensions.tidy-up.lastFiling', json, true);
+		} catch (e) { /* memory copy is enough */ }
+	},
+
+	getLastFiling() {
+		if (this.lastFiling) return this.lastFiling;
+		try {
+			const raw = Zotero.Prefs.get('extensions.tidy-up.lastFiling', true);
+			if (raw) this.lastFiling = JSON.parse(raw);
+		} catch (e) { this.lastFiling = null; }
+		return this.lastFiling || null;
+	},
+
+	// Reverse the last filing: remove what was added, put back what was removed.
+	async undoLastFiling() {
+		const last = this.getLastFiling();
+		if (!last) return { undone: 0 };
+		let n = 0;
+		await Zotero.DB.executeTransaction(async () => {
+			for (const [itemId, cid] of last.added) {
+				const c = await Zotero.Collections.getAsync(cid);
+				if (c) { await c.removeItem(itemId); n++; }
+			}
+			for (const [itemId, cid] of last.removed) {
+				const c = await Zotero.Collections.getAsync(cid);
+				if (c) { await c.addItem(itemId); n++; }
+			}
+		});
+		this.setLastFiling(null);
+		this.showNotification('PaperRouter', `Undid ${n} change(s)`, 'success');
+		return { undone: n };
 	},
 
 	async showBatchDialog(items) {
@@ -3360,7 +3449,8 @@ Output strictly in the above format with no additional content.`;
 			try {
 				const byId = new Map(items.map(i => [i.id, i]));
 				const res = await this.addItemsToCollections(args.assignments, byId);
-				this.showNotification('PaperRouter', `Filed ${args.assignments.length} paper(s): ${res.added} new assignment(s) in ${res.collections} collection(s)`, 'success');
+				const moved = res.removed ? `, ${res.removed} removed from inbox` : '';
+				this.showNotification('PaperRouter', `Filed ${args.assignments.length} paper(s): ${res.added} new assignment(s) in ${res.collections} collection(s)${moved}. Undo: right-click > Undo last PaperRouter filing`, 'success');
 			} catch (e) {
 				this.log(`showBatchDialog: filing failed: ${e.message}`);
 				this.showNotification('PaperRouter', `Failed to file papers: ${e.message}`, 'error');
@@ -3549,6 +3639,8 @@ Output strictly in the above format with no additional content.`;
 			// User-selected new Collection IDs
 			let newCollectionIds = new Set(collections.map(c => parseInt(c.id, 10)));
 			
+			const undoAdded = [];
+			const undoRemoved = [];
 			// Execute DB ops in transaction
 			await Zotero.DB.executeTransaction(async () => {
 				// 1. Remove Item from old Collections (not in new selection)
@@ -3557,6 +3649,7 @@ Output strictly in the above format with no additional content.`;
 						let oldCollection = await Zotero.Collections.getAsync(oldColId);
 						if (oldCollection) {
 							await oldCollection.removeItem(item.id);
+							undoRemoved.push([item.id, oldColId]);
 							this.log(`  - Removed from "${oldCollection.name}"`);
 						}
 					}
@@ -3572,6 +3665,7 @@ Output strictly in the above format with no additional content.`;
 						let itemCollections = item.getCollections();
 						if (!itemCollections.includes(collectionId)) {
 							await collection.addItem(item.id);
+							undoAdded.push([item.id, collectionId]);
 							this.log(`  - Added to "${collection.name}"`);
 						} else {
 							this.log(`  - Already in "${collection.name}", skipping`);
@@ -3583,7 +3677,8 @@ Output strictly in the above format with no additional content.`;
 			});
 			
 			// Show success prompt
-			this.showNotification('PaperRouter', `Filed into ${collections.length} collection(s): ${collections.map(c => c.name).join(', ')}`, 'success');
+			this.setLastFiling({ added: undoAdded, removed: undoRemoved });
+			this.showNotification('PaperRouter', `Filed into ${collections.length} collection(s): ${collections.map(c => c.name).join(', ')}. Undo: right-click > Undo last PaperRouter filing`, 'success');
 			
 			this.log('sendItemToCollections: Completed successfully');
 		} catch (e) {

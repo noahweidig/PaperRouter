@@ -120,3 +120,22 @@ describe('localrank oversized collections', () => {
     expect(r[0]).toBe(1);
   });
 });
+
+describe('localrank explanations', () => {
+  test('returns matched words and similar filed titles per collection', () => {
+    const idx = L.buildIndex({ collections, items });
+    const s = L.score(idx, { title: 'Shrub fuel loads after fire' });
+    const why = s.why.get(1);
+    expect(why.terms.length).toBeGreaterThan(0);
+    expect(why.terms.every(t => typeof t === 'string')).toBe(true);
+    expect(why.similar.length).toBeGreaterThan(0);
+    expect(why.similar[0]).toMatch(/fuel|shrub/i);
+  });
+
+  test('uses original words, not stems, in the explanation', () => {
+    const idx = L.buildIndex({ collections, items });
+    const why = L.score(idx, { title: 'Burning shrubs' }).why;
+    const all = [...why.values()].flatMap(w => w.terms);
+    expect(all.some(t => t === 'burning' || t === 'shrubs')).toBe(true);
+  });
+});
